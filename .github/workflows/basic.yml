@@ -28,14 +28,9 @@ jobs:
       - name: Install Dependencies
         run: ./run install
 
-      # Step 4: Run ./run test to execute the test suite
+      # Step 4: Run tests to execute the test suite
       - name: Run Test Suite
-        run: ./run test
-      
-      # Step 4.5: debugging step
-      # After running the tests, check if the test-results.txt file exists
-      - name: Check test-results.txt file
-        run: cat test-results.txt
+        run: npx vitest run --coverage.enabled=true
         
       # Step 5: Run ./run URL_FILE to process the environment variable (assumes URL_FILE is passed in as an environment variable)
       - name: Run URL_FILE Command
