@@ -133,6 +133,28 @@ export class gitAPIHandler{
     return issues.data;
   }
       
+  /**
+   * Retrieves a list of issues from the specified repository that were closed within the last six months.
+   *
+   * @returns {Promise<Array>} A promise that resolves to an array of issue objects.
+   *
+   * @remarks
+   * This method uses the Octokit library to interact with the GitHub API and fetch issues.
+   * It filters the issues to include only those that were closed within the last six months.
+   */
+  public async getClosedIssues() {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const issues = await this.octokit.issues.listForRepo({
+        owner: this.owner,
+        repo: this.repo,
+        since: sixMonthsAgo.toISOString(),
+        state: 'closed', // to get both open and closed issues
+    });
+    return issues.data;
+  }
+
 
   /**
    * This function fetches all pull requests for the specified repository in the past 6 months

@@ -48,6 +48,7 @@ fs.readFile(filePath, 'utf8', async (err, data) => {
             const issues = await handler.issues;
             const pullRequests = await handler.pullRequests;
             const commits = await handler.commits;
+            const closedIssues = await handler.closedIssues;
 
             // Clone the repository to a temporary directory
             //const tempDir= path.resolve(process.cwd(), 'repo');
@@ -56,7 +57,7 @@ fs.readFile(filePath, 'utf8', async (err, data) => {
             
 
             // Once the URL is processed, create and compute the metric
-            const test_metric = new metric_manager(data, contributors, issues, pullRequests, commits, gitUrl, tempDir);
+            const test_metric = new metric_manager(data, contributors, issues, pullRequests, commits, gitUrl, tempDir, closedIssues);
             const metric_array = await test_metric.parallel_metric_and_net_score_calc();
 
             // Delete the temporary directory

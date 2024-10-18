@@ -1,5 +1,14 @@
 import fs from 'fs';
 
+/**
+ * Calculates Maintainer score
+ * 
+ * @param contributors - Array of contributors
+ * @param issues - Array of issues from the Github API
+ * @param pullRequests - Array of PRs
+ * @param commits - N/A (unused)
+ * @returns - Maintainer score
+ */
 export function maintainer_net(contributors: any, issues: any, pullRequests: any, commits: any): number {
     let responseTime = calculateAverageResponseTime(issues, pullRequests);
     let issueClosureTime = calculateIssueClosureTime(issues);
@@ -15,7 +24,12 @@ export function maintainer_net(contributors: any, issues: any, pullRequests: any
     return responsiveMaintainerScore;
 }
 
-
+/**
+ * Caclulates average response time
+ * @param issues - Array of issues
+ * @param pullRequests - Array of PRs
+ * @returns 1 if average response time is less than 4 days, 0 otherwise
+ */
 function calculateAverageResponseTime(issues: any[], pullRequests: any[]): number {
     // Calculate average response time from issues and pull requests
     //use "created_at" and "closed_at" fields from issues and pull requests
@@ -58,6 +72,11 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
     }
 }
 
+/**
+ * Calculates time it takes to close an issue
+ * @param issues - Array of issues
+ * @returns 1 if the time to close is less than 2 weeks, otherwise 0
+ */
 function calculateIssueClosureTime(issues: any[]): number {
     let totalClosureTime = 0;
     let count = 0;
@@ -89,7 +108,11 @@ function calculateIssueClosureTime(issues: any[]): number {
     }
 }
 
-
+/**
+ * Calculates the ratio of open to closed issues
+ * @param issues - Array of issues
+ * @returns 1 if ratio is less than 1, 0 else
+ */
 function calculateOpenClosedRatio(issues: any[]): number {
     // Count the number of open and closed issues
     let openCount = 0;
@@ -131,7 +154,11 @@ function calculateOpenClosedRatio(issues: any[]): number {
 
 }
 
-
+/**
+ * Determines the number of active maintainers
+ * @param contributors - Array of contributors
+ * @returns If there are active maintainers (if more than 3, then return 1, otherwise 0)
+ */
 function calculateActiveMaintainers(contributors: any []): number {
     const now = new Date();
     const thirtyDaysAgo = new Date();

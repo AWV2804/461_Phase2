@@ -70,6 +70,7 @@ test('identify should return Not Found for unsupported URLs', () => {
 //     }
 // });
 
+ //    expect(fs.readFile).toHaveBeenCalledWith(mockFilePath, 'utf-8');
 test('handle should delegate GitHub URLs to gitAPIHandler', async () => {
     const mockGitHandler = {
         getRepoDetails: vi.fn().mockResolvedValue({}),

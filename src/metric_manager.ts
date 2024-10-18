@@ -12,11 +12,21 @@ import os from "os";
 
 //import { temp_bus_factor_calc } from "./bus_factor_calc.js";
 import { calculateRampUpScore } from './rampUp.js'; // Assuming rampUp contains ESLint logic
+import { calculateCorrectnessScore } from "./correctness_calc.js";
 
+/**
+ * Rounding function
+ * @param val Value to be rounded
+ * @param num_decimal_places How many decimal places to round to
+ * @returns Rounded number to specified decimal points
+ */
 function roundToNumDecimalPlaces(val: number, num_decimal_places: number) {
     return Math.round(val * Math.pow(10, num_decimal_places)) / Math.pow(10, num_decimal_places);
 }
 
+/**
+ * Metric manager class
+ */
 export class metric_manager {
     // will need a lot of attributes, including the input arguments from API handlers
     public bus_factor_latency: number;
@@ -34,8 +44,20 @@ export class metric_manager {
     public data:any;
     public tempDir: string;
     public net_score: number;
+    public closedIssues: any;
 
-    constructor(data, contributors, issues, pullRequests, commits, url, tempDir /*a lot of arguments*/) {
+    /**
+     * Creates metric_manager class
+     * @param data URL data
+     * @param contributors Array of contributors
+     * @param issues Array of issues
+     * @param pullRequests Array of PRs
+     * @param commits Array of commits
+     * @param url - Specific URL
+     * @param tempDir - Temporary directory where URL Repo is cloned
+     * @param closedIssues - Array of closed issues
+     */
+    constructor(data, contributors, issues, pullRequests, commits, url, tempDir, closedIssues /*a lot of arguments*/) {
         this.bus_factor_latency = 0;
         this.correctness_latency = 0;
         this.ramp_up_latency = 0;
@@ -45,20 +67,21 @@ export class metric_manager {
         this.metadata = data;
         this.contributors = contributors;
         this.issues = issues;
+        this.closedIssues = closedIssues;
         this.pullRequests = pullRequests;
         this.commits = commits;
         this.url = url;
         this.data = data;
         this.tempDir = tempDir;
-    
-        //this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'temp-repo-'));
-        // this.tempDir= path.resolve(process.cwd(), 'repo');
-        // cloneRepository(this.url, this.tempDir);
 
     }
     
     // functions for calculating each metric
     //public bus_factor_calc(): Promise<number> {
+    /**
+     * Calculates busfactor score
+     * @returns Busfactor score
+     */
     public bus_factor_calc(){        
         const startTime = performance.now();
         // calculations for bus factor
@@ -71,16 +94,25 @@ export class metric_manager {
     
         
     }
-    public correctness_calc(): number {
+    /**
+     * Calculates correctness score - NOT IMPLEMENTED
+     * @returns Correctness score
+     */
+    public correctness_calc(){
         const startTime = performance.now();
         logger.debug("Calculating correctness")
         // calculations for correctness factor
 
+        let correctness = calculateCorrectnessScore(this.issues, this.closedIssues);
         const endTime = performance.now();
         this.correctness_latency = roundToNumDecimalPlaces(endTime - startTime, 3);
-        return 1;
+        return correctness;
     }
 
+    /**
+     * Calculates ramp up score
+     * @returns Ramp Up Score
+     */
     public async calculateRampUpMetric(): Promise<number> {
         const startTime = Date.now();
         // Call the ramp-up score function, assuming repoData contains the necessary files
@@ -92,7 +124,10 @@ export class metric_manager {
         return rampUpScore; 
     }
 
-    
+    /**
+     * Calculates maintainer score
+     * @returns Maintainer score
+     */
     public maintainer_calc(): number {
         const startTime = performance.now();
         logger.debug("Calculating maintainer factor")
@@ -101,6 +136,10 @@ export class metric_manager {
         this.maintainer_latency = roundToNumDecimalPlaces(endTime - startTime, 3);
         return maintainer_score;
     }
+    /**
+     * Calculates license score
+     * @returns 1 for valid license, 0 else
+     */
     public async licence_verify(/* accept API call (most likely string of file paths)*/): Promise<number> {
         // if file name is some combination of lowercase and capital letters to make the word 'license'
         // regex statement to do so: r'^(?i)license(\.)?[a-zA-z]*$'
@@ -128,6 +167,10 @@ export class metric_manager {
         }
     }
 
+    /**
+     * Calculates netscore and runs the metric calculations in parallel
+     * @returns Array of metric scores
+     */
     // run all the metrics in parallel and calculate the net score
     public async parallel_metric_and_net_score_calc() {
         //fs.rmSync(await this.tempDir, { recursive: true, force: true });
@@ -135,12 +178,12 @@ export class metric_manager {
         const startTime = performance.now();
         const metric_array = await Promise.all([
             Promise.resolve(this.bus_factor_calc()),
-            //Promise.resolve(this.correctness_calc()),
+            Promise.resolve(this.correctness_calc()),
             Promise.resolve(this.calculateRampUpMetric()),
             Promise.resolve(this.maintainer_calc()),
             Promise.resolve(this.licence_verify())
         ]);
-        this.net_score = .3*metric_array[2] + .3*metric_array[0] + .2*metric_array[3] + .2*metric_array[1];
+        this.net_score = metric_array[4] * (.4*metric_array[3] + .3*metric_array[1] + .1*metric_array[0] + .2*metric_array[2]);
         const endTime = performance.now();
         this.net_score_latency = roundToNumDecimalPlaces(endTime - startTime, 3);
         
