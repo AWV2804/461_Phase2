@@ -7,12 +7,13 @@
     "test": "vitest run  --silent --coverage.enabled=true  --reporter verbose > test-results.txt   && node test/printResults.js",
     "coverage": "vitest run --coverage"
   },
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@octokit/rest": "^21.0.2",
+    "@types/mongoose": "^5.11.97",
+    "@types/pg": "^8.11.10",
     "async-mutex": "^0.5.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
@@ -22,6 +23,9 @@
     "isomorphic-git": "^1.27.1",
     "jsdom": "^25.0.0",
     "marked": "^14.1.2",
+    "mongodb": "^6.9.0",
+    "mongoose": "^8.7.2",
+    "pg": "^8.13.0",
     "readability-score": "^1.0.1",
     "text-statistics": "^0.1.1",
     "winston": "^3.14.2"
