@@ -1,3 +1,50 @@
+/**
+ * This module sets up an Express server with various endpoints for handling package management operations.
+ * It includes endpoints for uploading packages, resetting the database, rating packages, and more.
+ * The server also integrates with Swagger for API documentation and uses various utilities for processing packages.
+ * 
+ * @module openAPI_controller
+ * 
+ * @requires express
+ * @requires swagger-jsdoc
+ * @requires swagger-ui-express
+ * @requires ./utils.js
+ * @requires ./database
+ * @requires ./rate.js
+ * @requires cors
+ * @requires ./logging.js
+ * @requires adm-zip
+ * @requires dotenv
+ * @requires crypto-js/sha256
+ * @requires isomorphic-git
+ * @requires isomorphic-git/http/node
+ * @requires fs
+ * @requires path
+ * @requires ./s3_utils
+ * @requires esbuild
+ * 
+ * @constant {string[]} possibleReadmeFiles - List of possible README file names.
+ * @constant {string} monkeyBusiness - A hardcoded bearer token for authentication.
+ * @constant {object} packageDB - MongoDB connection for the Packages collection.
+ * @constant {object} userDB - MongoDB connection for the Users collection.
+ * @constant {object} Package - Mongoose model for the Package schema.
+ * @constant {object} UserModel - Mongoose model for the User schema.
+ * @constant {object} app - Express application instance.
+ * @constant {number} FRONTEND_PORT - Port number for the frontend connection.
+ * @constant {number} BACKEND_PORT - Port number for the backend server.
+ * @constant {object} swaggerOptions - Configuration options for Swagger.
+ * @constant {object} swaggerDocs - Swagger documentation generated from swaggerOptions.
+ * 
+ * @function app.delete('/reset') - Endpoint to reset the database.
+ * @function app.post('/package') - Endpoint to upload a package and calculate its score.
+ * @function app.get('/package/:id/rate') - Endpoint to rate a package.
+ * @function app.put('/authenticate') - Endpoint to authenticate a user.
+ * @function app.get('/package/:id') - Endpoint to retrieve package information.
+ * @function app.post('/package/:id') - Endpoint to update a package.
+ * @function app.post('/package/byRegEx') - Endpoint to find packages by regular expression.
+ * @function app.get('/package/:id/cost') - Endpoint to get the cost of a package.
+ * @function app.post('/create-account') - Endpoint to create a new user account.
+ */
 import express from 'express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
@@ -675,9 +722,9 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
         }
 
         // Validate the data fields assuming url and content are properly sent
-        if (!data['Name'] || !data['debloat'] || !data['JSProgram']) {
-            logger.info('Name, debloat, or JSProgram was not set.');
-            return res.status(400).send('Name, debloat, or JSProgram was not set.');
+        if (!data['Name'] || !data['debloat']) {
+            logger.info('Name or debloat was not set.');
+            return res.status(400).send('Name or debloat was not set.');
         }
         if (typeof(data['Name']) != 'string' || typeof(data['debloat']) != 'boolean' || typeof(data['JSProgram']) != 'string') {
             logger.info('Name, debloat, or JSProgram is not a string.');
@@ -694,6 +741,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
         }
 
         const packageID = metadata['ID'];
+        const secret = data['secret'];
         const packageName = metadata['Name'];
         const version = metadata['Version'];
         const debloat = data['debloat'];
@@ -776,7 +824,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
             return res.status(424).send('Package rating too low');
         }
         // package is now ingestible 
-        let pkgs = await db.getPackagesByNameOrHash(packageName, Package);
+        const pkgs = await db.getPackagesByNameOrHash(packageName, Package);
         if (pkgs[0] == false) {
             if (pkgs[1][0] == -1) {
                 logger.info('Package not found');
@@ -786,10 +834,27 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 return res.status(500).send('Internal Error: Could not fetch packages');
             }
         } else if (Array.isArray(pkgs[1])) { // gets mad if you dont do this
+            const pkg_list = pkgs[1];
             // ensure that content only updated by content, url only updated by url
-            if ((isUrl && pkgs[1][0].ingestionMethod == "Content") || (!isUrl && pkgs[1][0].ingestionMethod == "URL")) {
+            if ((isUrl && pkg_list[0].ingestionMethod == "Content") || (!isUrl && pkg_list[0].ingestionMethod == "URL")) {
                 logger.info('Ingestion method does not match');
                 return res.status(400).send('Ingestion method does not match');
+            }
+
+            if (pkg_list[0]["secret"]) {
+                // if not in user group that initially uploaded, you can't update
+                if (pkg_list[0]["userGroup"] != userGroup) {
+                    logger.error("No access: Wrong user group");
+                    return res.status(403).send("No access: Wrong user group");
+                } else if (secret == false) {
+                    logger.error("Cannot make secret package public");
+                    return res.status(403).send("Cannot make secret package public");
+                }
+            } else {
+                if (secret == true) {
+                    logger.error("Cannot make public package secret");
+                    return res.status(403).send("Cannot make public package secret");
+                }
             }
 
             // extract the major, minor, and patch version from input package
@@ -797,7 +862,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
             console.log(majorKey, minorKey, patchKey);
             logger.info("Extracting major, minor, and patch version from input package");
             // create list of all packages that have major and minor versions
-            const matches = pkgs[1].filter(pkg=> {
+            const matches = pkg_list.filter(pkg=> {
                 const [major, minor] = pkg.version.split('.');
                 return majorKey == major && minorKey == minor;
             }).map(pkg => pkg.version); // will only store the version string rather than whole package
@@ -826,7 +891,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
             if (matches.length == 0) {
                 const result = await db.addNewPackage( // talk to adhvik. should be using update package or add new package?
                     packageName, url, Package, newPackageID, package_rating, version, package_net, 
-                    isUrl ? "URL" : "Content", readMeContent);
+                    isUrl ? "URL" : "Content", readMeContent, secret, userGroup);
                 
                 if (result[0] == false) {
                     return res.status(500).send('Error adding package to mongo');
@@ -845,7 +910,6 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                     return res.status(500).send('Error uploading content to S3');
                 }
 
-                    
                 if (result[0] == true) {
                     logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                     return res.status(200).send('Package has been updated');
@@ -853,13 +917,16 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                     logger.info('Error updating package');
                     return res.status(500).send('Error updating package');
                 }
+
             } else if (isUrl) {
                 if (matches.includes(version)) { // the version already exists
                     logger.info('Package with version ${version} already exists');
                     return res.status(409).send('Package with version ${version} already exists');
                 } else {
                     const result = await db.addNewPackage(
-                        packageName, url, Package, newPackageID, package_rating, version, package_net, "URL", readMeContent);
+                        packageName, url, Package, newPackageID, package_rating, version, package_net, 
+                        "URL", readMeContent, secret, userGroup);
+
 
                     if (result[0] == false) {
                         logger.debug('Error adding package to mongo');
@@ -888,7 +955,8 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 const latestUploadedPatch = parseInt(matches[0].split('.')[2]);
                 if (parseInt(patchKey) > latestUploadedPatch) {
                     const result = await db.addNewPackage(
-                        packageName, url, Package, newPackageID, package_rating, version, package_net, "Content", readMeContent,);
+                        packageName, url, Package, newPackageID, package_rating, version, package_net, 
+                        "Content", readMeContent, secret, userGroup);
 
                     if (result[0] == false) {
                         logger.debug('Error adding package to mongo');
