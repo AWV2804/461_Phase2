@@ -45,6 +45,15 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
                 const [owner, repo] = repository.replace('github:', '').split('/');
                 return `https://github.com/${owner}/${repo}`;
             }
+            if (repository.startsWith('git@')) {
+                const sshParts = repository.split(':');
+                if (sshParts.length === 2 && sshParts[1].includes('/')) {
+                    const [host, path] = sshParts;
+                    const repoPath = path.replace(/\.git$/, ''); // Remove trailing .git
+                    return `https://${host.split('@')[1]}/${repoPath}`;
+                }
+            }
+
             // Convert other formats to standard URL format
             url = new URL(repository.replace(/^git@/, 'https://').replace(/^git:\/\//, 'https://'));
         } else if (typeof repository === 'object' && repository.url) {
