@@ -1197,6 +1197,186 @@ app.get('/package/:id/cost', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /packages:
+ *   post:
+ *     summary: Get packages from the registry based on query.
+ *     parameters:
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: string
+ *         description: Provide this for pagination. If not provided, returns the first page of results.
+ *       - in: header
+ *         name: X-Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The authentication token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 Name:
+ *                   type: string
+ *                 Version:
+ *                   type: string
+ *               required:
+ *                 - Name
+ *                 - Version
+ *           example:
+ *             - Name: "React"
+ *               Version: "^17.0.0"
+ *     responses:
+ *       200:
+ *         description: List of packages
+ *         content:
+ *           application/json:
+ *              schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Name:
+ *                     type: string
+ *                   Version:
+ *                     type: string
+ *                   ID:
+ *                     type: string
+ *             example:
+ *               - Name: "React"
+ *                 Version: "17.0.2"
+ *                 ID: "react"
+ *       400:
+ *         description: Missing or invalid fields in the PackageQuery.
+ *       403:
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       413:
+ *         description: Too many packages returned.
+ */
+app.post('/packages', async (req, res) => {
+    const offset = req.query.offset as string | undefined;
+    const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
+
+    // Validate request body
+    if (!Array.isArray(packageQueries) || packageQueries.length === 0) {
+        console.log(packageQueries);
+        console.log(packageQueries.length);
+        logger.error('Invalid request body: Expected a non-empty array of PackageQuery.');
+        return res.status(400).send("There are missing field(s) in the PackageQuery or it is formed improperly, or is invalid.");
+    }
+
+    // Check if enumerating all packages
+    const isEnumerateAll = packageQueries.length === 1 && packageQueries[0].Name === '*';
+
+    if (isEnumerateAll) {
+        try {
+            const limit = 50;
+            const [success, packagesOrError] = await db.getAllPackages(Package);
+            if (!success) {
+                logger.error('Error fetching all packages:', packagesOrError);
+                return res.status(500).send('Internal Server Error');
+            }
+
+            const allPackages: any[] = packagesOrError as any[];
+            const start = offset ? parseInt(offset, 10) : 0;
+            const paginatedPackages = allPackages.slice(start, start + limit + 1);
+            let nextOffset: string | null = null;
+            if (paginatedPackages.length > limit) {
+                nextOffset = (start + limit).toString();
+                paginatedPackages.splice(limit, 1);
+                res.setHeader('offset', nextOffset);
+            }
+
+            const formattedPackages = paginatedPackages.map(pkg => ({
+                Name: pkg.name,
+                Version: pkg.version,
+                ID: pkg.packageId,
+            }));
+
+            return res.status(200).json(formattedPackages);
+        } catch (error) {
+            logger.error('Error fetching all packages:', error);
+            return res.status(500).send('Internal Server Error');
+        }
+    } else {
+        // Validate each PackageQuery
+        const versionPatterns = ['^', '~', '-'];
+        for (const query of packageQueries) {
+            if (
+                typeof query.Name !== 'string' ||
+                (query.Version && typeof query.Version !== 'string') ||
+                !query.Name.trim() ||
+                (query.Version && !query.Version.trim())
+            ) {
+                logger.error('Invalid PackageQuery format.');
+                return res.status(400).send("There are missing field(s) in the PackageQuery or it is formed improperly, or is invalid.");
+            }
+
+            // Ensure Version is not a combination of different possibilities
+            if (query.Version) {
+                const patternCount = versionPatterns.reduce((count, pattern) => {
+                    return count + (query.Version.includes(pattern) ? 1 : 0);
+                }, 0);
+
+                const isExactVersion = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(query.Version);
+                if (!isExactVersion && patternCount > 1) {
+                    logger.error('Version cannot be a combination of different possibilities.');
+                    return res.status(400).send("The 'Version' cannot be a combination of the different possibilities.");
+                }
+            }
+        }
+
+        try {
+            const limit = 50;
+            let fetchedPackages: any[] = [];
+            for (const query of packageQueries) {
+                const [success, packagesOrError] = await db.getPackagesByNameOrHash(query.Name, Package);
+                if (!success) {
+                    logger.error('Error fetching packages by name:', packagesOrError);
+                    return res.status(500).send('Internal Server Error');
+                }
+                const packages: any[] = packagesOrError as any[];
+                fetchedPackages = fetchedPackages.concat(packages);
+            }
+
+            // Remove duplicates based on ID
+            const uniquePackages = Array.from(new Map(fetchedPackages.map(pkg => [pkg.packageId, pkg])).values());
+
+            // Implement pagination
+            const start = offset ? parseInt(offset, 10) : 0;
+            const paginatedPackages = uniquePackages.slice(start, start + limit + 1);
+
+            if (paginatedPackages.length > limit) {
+                const nextOffset = (start + limit).toString();
+                paginatedPackages.splice(limit, 1);
+                res.setHeader('offset', nextOffset);
+            }
+
+            if (paginatedPackages.length > limit) {
+                return res.status(413).send('Too many packages returned.');
+            }
+
+            const formattedPackages = paginatedPackages.map(pkg => ({
+                Name: pkg.name,
+                Version: pkg.version,
+                ID: pkg.packageId,
+            }));
+
+            return res.status(200).json(formattedPackages);
+        } catch (error) {
+            logger.error('Error fetching packages:', error);
+            return res.status(500).send('Internal Server Error');
+        }
+    }
+});
+
 /*------------------ Extra APIs not in spec ------------------*/
 
 /**
@@ -1263,7 +1443,7 @@ app.post('/create-account', async (req, res) => {
     try {
         const [success, result] = await db.addUser(username, hashedPassword, isAdmin, UserModel, userGroup);
         if (success) {
-            return res.status(201).json({ message: 'User created successfully', user: result });
+            return res.status(200).json({ message: 'User created successfully', user: result });
         } else {
             return res.status(500).json({ error: 'Failed to create user', details: result });
         }
@@ -1273,5 +1453,25 @@ app.post('/create-account', async (req, res) => {
     }
 });
 
+app.delete('/delete-account', async (req, res) => {
+    const { username, usernameToDelete, isAdmin } = req.body;
+    
+    if (!usernameToDelete || typeof isAdmin !== 'boolean') {
+        return res.status(400).json({ error: 'Invalid request data' });
+    }
 
-
+    if (!isAdmin && username !== usernameToDelete) {
+        return res.status(403).json({ error: 'Invalid permissions: Not Admin' });
+    }
+    try {
+        const [success, result] = await db.removeUserByName(usernameToDelete, UserModel);
+        if (success) {
+            return res.status(200).json({ message: 'User deleted successfully', user: result });
+        } else {
+            return res.status(500).json({ error: 'Failed to delete user', details: result });
+        }
+    } catch (error) {
+        console.error('Error in /delete-account:', error);
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
