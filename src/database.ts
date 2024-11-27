@@ -65,6 +65,18 @@ export async function addNewPackage(name: String, url: String, Package: mongoose
 
 
 
+export async function removePackageByNameOrHash(identifier: string, Package: mongoose.Model<any>) : Promise<boolean> {
+    try {
+        const result = await Package.deleteOne({ $or : [{ name: identifier }, { packageId: identifier }] });
+        logger.info('Package removed:', result);
+        return true;
+    } catch (error) {
+        logger.debug('Error removing package:', identifier);
+        return false;
+    }
+}
+
+
 /**
  * Gets all the packages in the collection
  * @returns All packages or error

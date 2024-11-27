@@ -812,10 +812,27 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
 
             const newPackageID = SHA256(packageName + version).toString();
             if (matches.length == 0) {
-                await s3.uploadContentToS3(base64zip, newPackageID);
                 const result = await db.addNewPackage( // talk to adhvik. should be using update package or add new package?
                     packageName, url, Package, newPackageID, package_rating, version, package_net, 
                     isUrl ? "URL" : "Content", readMeContent);
+                
+                if (result[0] == false) {
+                    return res.status(500).send('Error adding package to mongo');
+                }
+
+                try {
+                    // use try-catch because this has no return value
+                    await s3.uploadContentToS3(base64zip, newPackageID);
+                } catch (error) {
+                    logger.debug('Error uploading content to S3:', error);
+                    const removed = await db.removePackageByNameOrHash(newPackageID, Package);
+                    if (removed == false) {
+                        logger.debug('Error removing package from mongo');
+                    } else logger.debug('Package removed from mongo');
+                    logger.debug('Package not uploaded to S3');
+                    return res.status(500).send('Error uploading content to S3');
+                }
+
                     
                 if (result[0] == true) {
                     logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
@@ -829,31 +846,58 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                     logger.info('Package with version ${version} already exists');
                     return res.status(409).send('Package with version ${version} already exists');
                 } else {
-                    await s3.uploadContentToS3(base64zip, newPackageID);
                     const result = await db.addNewPackage(
                         packageName, url, Package, newPackageID, package_rating, version, package_net, "URL", readMeContent);
+
+                    if (result[0] == false) {
+                        logger.debug('Error adding package to mongo');
+                        return res.status(500).send('Error adding package to mongo');
+                    }
+
+                    try {
+                        // use try-catch because this has to return value
+                        await s3.uploadContentToS3(base64zip, newPackageID);
+                    } catch (error) {
+                        logger.debug('Error uploading content to S3:', error);
+                        const removed = await db.removePackageByNameOrHash(newPackageID, Package);
+                        if (removed == false) {
+                            logger.debug('Error removing package from mongo');
+                        } else logger.debug('Package removed from mongo');
+                        logger.debug('Package not uploaded to S3');
+                        return res.status(500).send('Error uploading content to S3');
+                    }
                     if (result[0] == true) {
                         logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                         return res.status(200).send('Package has been updated');
-                    } else {
-                        logger.info('Error updating package');
-                        return res.status(500).send('Error updating package');
                     }
                 }
             } else {
                 // uploaded via content
                 const latestUploadedPatch = parseInt(matches[0].split('.')[2]);
                 if (parseInt(patchKey) > latestUploadedPatch) {
-                    await s3.uploadContentToS3(base64zip, newPackageID);
                     const result = await db.addNewPackage(
                         packageName, url, Package, newPackageID, package_rating, version, package_net, "Content", readMeContent,);
-                    if (result[0] == true) {
-                        logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
-                        return res.status(200).send('Package has been updated');
-                    } else {
-                        logger.info('Error updating package');
-                        return res.status(500).send('Error updating package');
+
+                    if (result[0] == false) {
+                        logger.debug('Error adding package to mongo');
+                        return res.status(500).send('Error adding package to mongo');
                     }
+
+                    try {
+                        // use try-catch because this has to return value
+                        await s3.uploadContentToS3(base64zip, newPackageID);
+                    } catch (error) {
+                        logger.debug('Error uploading content to S3:', error);
+                        const removed = await db.removePackageByNameOrHash(newPackageID, Package);
+                        if (removed == false) {
+                            logger.debug('Error removing package from mongo');
+                        } else logger.debug('Package removed from mongo');
+                        logger.debug('Package not uploaded to S3');
+                        return res.status(500).send('Error uploading content to S3');
+                    }
+
+                    logger.info('Error updating package');
+                    return res.status(500).send('Error updating package');
                 } else {
                     logger.info('Patch version is not the latest');
                     return res.status(400).send('Patch version is not the latest');
