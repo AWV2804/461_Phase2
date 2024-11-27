@@ -263,6 +263,11 @@ export async function addUser(username: String, userHash: String, isAdmin: Boole
 
 export async function removeUserByName(username: string, User: mongoose.Model<any>) {
     try {
+        const user = await getUserByName(username, User);
+        if (user[0] === false) {
+            logger.info('User does not exist');
+            return [false, Error('User does not exist')];
+        }
         const result = await User.deleteOne({ username });
         logger.info('User removed:', result);
         return [true, result];

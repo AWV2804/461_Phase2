@@ -1,92 +1,196 @@
 // src/frontend/src/components/Search.tsx
-import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { AuthContext } from '../AuthContext';
+import './Styling/Search.css';
 
-/**
- * Interface for the search query parameters.
- */
-interface PackagesQuery {
-  searchTerm: string;
-}
-
-/**
- * Interface for a Package object.
- */
 interface Package {
-  name: string;
-  url: string;
-  score: string;
-  version: string;
-  prev_versions: string[];
+    Name: string;
+    Version: string;
+    ID: string;
 }
 
 const Search: React.FC = () => {
-  const [packages, setPackages] = useState<Package[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+    const { x_authorization } = useContext(AuthContext);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [packages, setPackages] = useState<Package[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [offset, setOffset] = useState<string | null>(null);
+    const [useRegex, setUseRegex] = useState(false);
 
-  const location = useLocation();
-
-  // Parse the query parameter from the URL
-  const queryParams = new URLSearchParams(location.search);
-  const searchTerm = queryParams.get('query') || '';
-
-  useEffect(() => {
-    const fetchPackages = async () => {
-      if (!searchTerm.trim()) {
-        setPackages([]);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/packages?search=${encodeURIComponent(searchTerm)}`);
-        if (!response.ok) {
-          throw new Error(`Error fetching packages: ${response.statusText}`);
-        }
-        const data: Package[] = await response.json();
-        setPackages(data);
-      } catch (err: any) {
-        setError(err.message || 'Unknown error occurred');
-      } finally {
-        setLoading(false);
-      }
+    const constructBackendUrl = (path: string): string => {
+        const { protocol, hostname } = window.location;
+        return `${protocol}//${hostname}:${process.env.REACT_APP_BACKEND_PORT}${path}`;
     };
 
-    fetchPackages();
-  }, [searchTerm]);
+    const searchUrl = useRegex ? constructBackendUrl('/package/byRegEx') : constructBackendUrl('/packages');
 
-  return (
-    <div>
-      <h2>Search Results for "{searchTerm}"</h2>
-      {loading && <p>Loading packages...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {!loading && !error && (
-        <>
-          {packages.length > 0 ? (
-            <ul>
-              {packages.map((pkg) => (
-                <li key={pkg.name} style={{ marginBottom: '20px' }}>
-                  <a href={pkg.url} target="_blank" rel="noopener noreferrer">
-                    <strong>{pkg.name}</strong>
-                  </a>
-                  <p>Score: {pkg.score}</p>
-                  <p>Version: {pkg.version}</p>
-                  {pkg.prev_versions.length > 0 && (
-                    <p>Previous Versions: {pkg.prev_versions.join(', ')}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No packages found matching your search.</p>
-          )}
-        </>
-      )}
-    </div>
-  );
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        setPackages([]);
+        setOffset(null);
+
+        try {
+            let response: Response;
+
+            if (useRegex) {
+                const regexQuery = { RegEx: searchTerm };
+                response = await fetch(searchUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Authorization': x_authorization || '',
+                    },
+                    body: JSON.stringify(regexQuery),
+                });
+            } else {
+                const packageQueries = [
+                    {
+                        Name: searchTerm.trim() === '' ? '*' : searchTerm,
+                        Version: '',
+                    },
+                ];
+                response = await fetch(`${searchUrl}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Authorization': x_authorization || '',
+                    },
+                    body: JSON.stringify(packageQueries),
+                });
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to fetch packages.');
+            }
+
+            const data: Package[] = await response.json();
+            const responseOffset = response.headers.get('offset');
+
+            setPackages(data);
+            setOffset(responseOffset);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadMore = async () => {
+        if (!offset) return;
+        setLoading(true);
+        setError(null);
+
+        try {
+            let response: Response;
+
+            if (useRegex) {
+                const regexQuery = { RegEx: searchTerm };
+                response = await fetch(`${searchUrl}?offset=${offset}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Authorization': x_authorization || '',
+                    },
+                    body: JSON.stringify(regexQuery),
+                });
+            } else {
+                const packageQueries = [
+                    {
+                        Name: searchTerm.trim() === '' ? '*' : searchTerm,
+                        Version: '',
+                    },
+                ];
+                response = await fetch(`${searchUrl}?offset=${offset}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Authorization': x_authorization || '',
+                    },
+                    body: JSON.stringify(packageQueries),
+                });
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to load more packages.');
+            }
+
+            const data: Package[] = await response.json();
+            const responseOffset = response.headers.get('offset');
+
+            setPackages((prev) => [...prev, ...data]);
+            setOffset(responseOffset);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="search-container">
+            <h2>Search Packages</h2>
+            <form onSubmit={handleSearch} className="search-form">
+                <div className="form-group">
+                    <label>
+                        Package Name or Regex:
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Enter package name or regex"
+                            required
+                        />
+                    </label>
+                </div>
+                <div className="form-group">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={useRegex}
+                            onChange={(e) => setUseRegex(e.target.checked)}
+                        />
+                        Use Regular Expression
+                    </label>
+                </div>
+                <button type="submit" disabled={loading} className="search-button">
+                    {loading ? 'Searching...' : 'Search'}
+                </button>
+            </form>
+            {error && <div className="error-message">{error}</div>}
+            <div className="result-container">
+                {packages.length > 0 && (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Version</th>
+                                <th>ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {packages.map((pkg) => (
+                                <tr key={pkg.ID}>
+                                    <td>{pkg.Name}</td>
+                                    <td>{pkg.Version}</td>
+                                    <td>{pkg.ID}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+                {offset && (
+                    <button onClick={loadMore} disabled={loading} className="load-more-button">
+                        {loading ? 'Loading...' : 'Load More'}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
 };
 
 export default Search;
