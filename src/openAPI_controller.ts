@@ -43,7 +43,10 @@
  * @function app.post('/package/:id') - Endpoint to update a package.
  * @function app.post('/package/byRegEx') - Endpoint to find packages by regular expression.
  * @function app.get('/package/:id/cost') - Endpoint to get the cost of a package.
+ * @function app.post('/packages') - Endpoint to search for packages.
+ * @function app.get('/tracks') - Endpoint to get implemented track.
  * @function app.post('/create-account') - Endpoint to create a new user account.
+ * @function app.delete('/delete-account') - Endpoint to delete a user account.
  */
 import express from 'express';
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -614,7 +617,6 @@ app.get('/package/:id/rate', async (req, res) => {
 app.put('/authenticate', async (req, res) => {
     try {
         const { User, Secret } = req.body;
-    
         // Validate request structure
         if (
           !User ||
@@ -640,8 +642,7 @@ app.put('/authenticate', async (req, res) => {
         if(user.userHash !== hashedPassword) {
           return res.status(401).json({ error: 'Invalid password' });
         }
-        const authToken = util.generateToken(isAdmin, user["userGroup"]);
-        // console.log(user.isAdmin);
+        const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
         return res.status(200).json({ authToken: `"${authToken}"` });
       } catch (error) {
         console.error(error);
@@ -1377,6 +1378,36 @@ app.post('/packages', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /tracks:
+ *   get:
+ *     summary: Get the list of tracks a student has planned to implement in their code
+ *     responses:
+ *       200:
+ *         description: Return the list of tracks the student plans to implement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plannedTracks:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["Performance track"]
+ *       500:
+ *         description: The system encountered an error while retrieving the student's track information.
+ */
+app.get('/tracks', async (req, res) => {
+    try {
+        const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
+        return res.status(200).json({ plannedTracks });
+    } catch (error) {
+        console.error('Error retrieving tracks:', error);
+        return res.status(500).json({ error: 'The system encountered an error while retrieving the student\'s track information.' });
+    }
+});
 /*------------------ Extra APIs not in spec ------------------*/
 
 /**
@@ -1441,10 +1472,12 @@ app.post('/create-account', async (req, res) => {
     const hashedPassword = SHA256(password).toString();
 
     try {
-        const [success, result] = await db.addUser(username, hashedPassword, isAdmin, UserModel, userGroup);
+        const [success, result] = await db.addUser(username, hashedPassword, isAdmin, userGroup, UserModel);
+        console.log(success);
         if (success) {
             return res.status(200).json({ message: 'User created successfully', user: result });
         } else {
+            console.log(result);
             return res.status(500).json({ error: 'Failed to create user', details: result });
         }
     } catch (error) {
@@ -1453,6 +1486,51 @@ app.post('/create-account', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /delete-account:
+ *   delete:
+ *     summary: Delete a user account
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username of the requester
+ *               usernameToDelete:
+ *                 type: string
+ *                 description: The username of the account to delete
+ *               isAdmin:
+ *                 type: boolean
+ *                 description: Whether the requester is an admin
+ *             required:
+ *               - username
+ *               - usernameToDelete
+ *               - isAdmin
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   description: The deleted user object
+ *       400:
+ *         description: Invalid request data
+ *       403:
+ *         description: Invalid permissions - Not Admin
+ *       500:
+ *         description: Server error
+ */
 app.delete('/delete-account', async (req, res) => {
     const { username, usernameToDelete, isAdmin } = req.body;
     
@@ -1461,7 +1539,7 @@ app.delete('/delete-account', async (req, res) => {
     }
 
     if (!isAdmin && username !== usernameToDelete) {
-        return res.status(403).json({ error: 'Invalid permissions: Not Admin' });
+        return res.status(403).json({ error: 'Invalid permissions - Not Admin' });
     }
     try {
         const [success, result] = await db.removeUserByName(usernameToDelete, UserModel);

@@ -1,48 +1,47 @@
-/* src/frontend/src/App.css */
+/* src/frontend/src/components/Styling/App.css */
 
 .app-header {
     background-color: #f8f8f8;
     border-bottom: 1px solid #e0e0e0;
     padding: 10px 20px;
-  }
-  
-  .nav-container {
+}
+
+.nav-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    
-  }
-  
-  .nav-logo {
+}
+
+.nav-logo {
     font-size: 1.5rem;
     font-weight: 700;
     color: #000000;
     text-decoration: none;
-  }
-  
-  .nav-logo:hover {
+}
+
+.nav-logo:hover {
     font-size: 1.5rem;
     font-weight: 700;
     color: #365679;
     text-decoration: none;
-  }
+}
 
-  .nav-links {
+.nav-links {
     display: flex;
     gap: 15px;
-  }
-  
-  .nav-link {
+}
+
+.nav-link {
     color: #007bff;
     text-decoration: none;
     font-weight: 500;
-  }
-  
-  .nav-link:hover {
+}
+
+.nav-link:hover {
     text-decoration: underline;
-  }
-  
-  .nav-button {
+}
+
+.nav-button {
     padding: 8px 16px;
     background-color: #215082;
     color: white;
@@ -52,8 +51,10 @@
     font-weight: 500;
     cursor: pointer;
     display: inline-block;
-  }
-  
-  .nav-button:hover {
+    font-family: Arial, sans-serif; /* Ensure the same font family */
+    font-size: 14px; /* Ensure the same font size */
+}
+
+.nav-button:hover {
     background-color: #4c7bad;
-  }
+}

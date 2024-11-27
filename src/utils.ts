@@ -13,9 +13,12 @@ import * as s3 from './s3_utils.js';
 import { useCallback } from 'react';
 import jwt from 'jsonwebtoken';
 import esbuild from 'esbuild';
+import dotenv from 'dotenv';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+dotenv.config();
 const SECRET_KEY = process.env.SECRET_KEY
 // Interface for Package JSON structure
 export interface PackageJson {
