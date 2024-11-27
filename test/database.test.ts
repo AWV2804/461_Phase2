@@ -143,7 +143,7 @@ describe('User Functions', () => {
     test('addUser should add a user successfully', async () => {
         const userData = { username: 'TestUser', userHash: 'testhash123', isAdmin: true };
         User.prototype.save.mockResolvedValue(userData);
-        const response = await addUser('TestUser', 'testhash123', true, User);
+        const response = await addUser('TestUser', 'testhash123', true, '', User);
         expect(response[0]).toBe(true);
         expect(response[1]).toEqual(userData);
     });
