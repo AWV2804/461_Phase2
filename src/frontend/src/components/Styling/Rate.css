@@ -1,0 +1,59 @@
+/* src/frontend/src/components/Styling/Rate.css */
+
+.rate-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: flex;
+    flex-direction: column;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .form-group input[type="text"] {
+    padding: 8px;
+    font-size: 16px;
+  }
+  
+  button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .error-message {
+    color: red;
+    margin-top: 10px;
+  }
+  
+  .result-container {
+    margin-top: 20px;
+  }
+  
+  .result-container table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .result-container th,
+  .result-container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .result-container th {
+    background-color: #f2f2f2;
+  }

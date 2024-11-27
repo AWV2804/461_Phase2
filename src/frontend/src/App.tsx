@@ -9,6 +9,8 @@ import Search from './components/Search';
 import Update from './components/Update';
 import Cost from './components/Cost';
 import Reset from './components/Reset';
+import Manage from './components/Manage';
+import Rate from './components/Rate';
 import './components/Styling/App.css'; // Import the CSS file for styling
 import { AuthContext } from './AuthContext';
 import ProtectedRoute from './components/ProtectedRoute'; // Import ProtectedRoute
@@ -96,6 +98,22 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/manage"
+            element={
+            <ProtectedRoute>
+                <Manage />
+            </ProtectedRoute>
+            }
+          />
+            <Route
+                path="/rate"
+                element={
+                <ProtectedRoute>
+                    <Rate />
+                </ProtectedRoute>
+                }
+            />
         </Routes>
       </main>
       </div>
