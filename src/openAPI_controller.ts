@@ -124,11 +124,8 @@ const swaggerOptions = {
             version: '1.0.0',
             servers: [
                 {
-                    url: `http://localhost:${BACKEND_PORT}`,
+                    url: `http://ec2-54-159-170-205.compute-1.amazonaws.com:8080/`, 
                 },
-                {
-                    url: 'https://ec2-3-82-171-93.compute-1.amazonaws.com',
-                }
             ]
         }
     },
