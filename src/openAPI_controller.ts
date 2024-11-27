@@ -137,16 +137,63 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 /**
  * @swagger
- *  /delete:
- *      delete:
- *          summary: Deletes the database
- *          responses:
- *              200:
- *                  description: Database deleted successfully
- *              500:
- *                  description: Error deleting database
+ * openapi: 3.0.0
+info:
+  title: Database Reset API
+  version: 1.0.0
+paths:
+  /reset:
+    delete:
+      summary: Resets the database
+      description: Deletes the database and all user records except for a specific user model. Only accessible by administrators with a valid authentication token.
+      tags:
+        - Admin
+      parameters:
+        - in: header
+          name: X-Authorization
+          required: true
+          schema:
+            type: string
+          description: The authentication token for authorization. Must belong to an administrator.
+      responses:
+        '200':
+          description: Database deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Registry is reset."
+        '403':
+          description: Authorization error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    examples:
+                      missingHeader:
+                        value: "Missing Authentication Header"
+                      invalidToken:
+                        value: "Invalid or expired token: [token error details]"
+                      insufficientPermissions:
+                        value: "You do not have the correct permissions to reset the registry."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Error deleting database"
+
  */
-// TODO: HAVE TO ADD AUTHENTICATION PARSING
 app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(authToken == '' || authToken == null) {
@@ -185,38 +232,141 @@ app.delete('/reset', async (req, res) => {
 
 /**
  * @swagger
- *  /upload/{url}:
- *     post:
- *      summary: Uploads a package and calculates the score
- *      parameters:
- *          - name: url
- *            in: path
- *            required: true
- *            schema:
- *              type: string
- *            description: The URL of the package to upload
- *      responses:
- *          200:
- *              description: Package uploaded successfully
- *              content:
- *                  text/plain:
- *                    schema:
- *                      type: number
- *                      description: The score of the package
- *          403:
- *              description: Package rating too low
- *          500:
- *              description: Error uploading package
+ * /package:
+ *   post:
+ *     summary: Uploads a package to the database
+ *     description: Processes a package provided as a base64-encoded content or a URL and uploads it to the database.
+ *     tags:
+ *       - Packages
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - debloat
+ *               - secret
+ *             properties:
+ *               Name:
+ *                 type: string
+ *                 description: The name of the package. Required if Content is provided.
+ *               Content:
+ *                 type: string
+ *                 format: base64
+ *                 description: Base64-encoded package content. Either Content or URL must be provided.
+ *               URL:
+ *                 type: string
+ *                 format: uri
+ *                 description: The URL pointing to the package repository. Either Content or URL must be provided.
+ *               debloat:
+ *                 type: boolean
+ *                 description: Whether to perform tree shaking on the package.
+ *               secret:
+ *                 type: string
+ *                 description: A secret for secure processing.
+ *               JSProgram:
+ *                 type: string
+ *                 description: Additional JavaScript program data.
+ *     responses:
+ *       201:
+ *         description: Package uploaded successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     Name:
+ *                       type: string
+ *                     Version:
+ *                       type: string
+ *                     ID:
+ *                       type: string
+ *                     Token:
+ *                       type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     Content:
+ *                       type: string
+ *                     JSProgram:
+ *                       type: string
+ *       409:
+ *         description: Package already exists.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     Name:
+ *                       type: string
+ *                     Version:
+ *                       type: string
+ *                     ID:
+ *                       type: string
+ *                     Token:
+ *                       type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     Content:
+ *                       type: string
+ *                     JSProgram:
+ *                       type: string
+ *       400:
+ *         description: Bad request. The input is invalid or incomplete.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       403:
+ *         description: Missing or invalid authentication header.
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       424:
+ *         description: Package rating too low for upload.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     Token:
+ *                       type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     packageRating:
+ *                       type: number
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  */
 app.post('/package', async (req, res) => {
-    // console.log(req.headers);
     const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    // console.log(token);
     if(token == '' || token == null) {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    // console.log(token);
     const {updatedToken, isAdmin, userGroup} = util.verifyToken(token);
     if(updatedToken instanceof Error) {
         logger.error('Invalid or expired token');
@@ -226,10 +376,6 @@ app.post('/package', async (req, res) => {
         logger.error('You do not have the correct permissions to upload to the database.');
         return res.status(403).send('You do not have the correct permissions to upload to the database.')
     }
-    // if (token != monkeyBusiness) {
-    //     logger.error('You do not have the correct permissions to upload to the database.');
-    //     return res.status(403).send('You do not have the correct permissions to upload to the database.');
-    // }
     let { Name, Content, URL, debloat, secret, JSProgram } = req.body
     if ((Content && URL) || (!Content && !URL)) {
         return res.status(400).json({
@@ -249,7 +395,6 @@ app.post('/package', async (req, res) => {
             const buffer = Buffer.from(Content, 'base64');
     
             // Load the zip file using adm-zip
-            // const AdmZip = require('adm-zip');
             const zip = new AdmZip(buffer);
     
             // Find the package.json file within the zip entries
@@ -286,11 +431,8 @@ app.post('/package', async (req, res) => {
             const packageName = packageJson.name;
     
             // Log or use the extracted information as needed
-            // console.log('Package Name:', packageName);
-            // console.log('Repository URL:', repoUrl);
             let base64Zip = '';
             const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
-            // const distDir = path.join(tempDir, 'dist');
             fs.mkdirSync(tempDir, { recursive: true });
             if (debloat) {
                 
@@ -309,7 +451,6 @@ app.post('/package', async (req, res) => {
                 base64Zip = zipBuffer.toString('base64');
             }
             fs.rmSync(tempDir, { recursive: true, force: true });
-            // TODO: Rework the get into get all packages and then get the latest one
             const pkg = await db.getPackagesByNameOrHash(packageName, Package);
             if(pkg[0] == true) {
                 logger.info(`Package ${packageName} already exists with score: ${pkg[1]["score"]}`);
@@ -393,9 +534,7 @@ app.post('/package', async (req, res) => {
                 URL = await util.processNPMUrl(URL);
             }
             const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
-            // const distDir = path.join(tempDir, 'dist');
             fs.mkdirSync(tempDir, { recursive: true });
-            // fs.mkdirSync(distDir, { recursive: true });
 
             await git.clone({
                 fs,
@@ -443,18 +582,9 @@ app.post('/package', async (req, res) => {
                 const zipBuffer = zip.toBuffer();
                 base64Zip = zipBuffer.toString('base64');
             }
-            // const zip = new AdmZip();
-            // zip.addLocalFolder(tempDir);
-
-            // // Get the zip content as a buffer
-            // const zipBuffer = zip.toBuffer();
-
-            // // Encode the zip buffer as Base64
-            // const base64Zip = zipBuffer.toString('base64');
 
             // Log or use the extracted information as needed
             console.log('Package Name:', package_name);
-            // fs.rmSync(distDir, { recursive: true });
             fs.rmSync(tempDir, { recursive: true, force: true });
             const pkg = await db.getPackagesByNameOrHash(package_name, Package);
             if (pkg[0] == true) { // if the package already exists, just return the score
@@ -537,26 +667,90 @@ app.post('/package', async (req, res) => {
 
 /**
  * @swagger
- * /rate/{url}:
- *      post:
- *          summary: Rates a package
- *          parameters:
- *              - name: url
- *                in: path
- *                required: true
- *                schema:
- *                  type: string
- *                description: The URL of the package to rate
- *          responses:
- *              200:
- *                  description: Package rated successfully   
- *                  content:
- *                      text/plain:
- *                        schema:
- *                          type: number
- *                          description: The score of the package
- *              500:
- *                  description: Error rating package
+ * /package/{id}/rate:
+ *   get:
+ *     summary: Retrieve the rating details for a specific package
+ *     tags:
+ *       - Packages
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID of the package to retrieve the rating for
+ *         schema:
+ *           type: string
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: Authentication token
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved package rating
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 BusFactor:
+ *                   type: number
+ *                   description: Bus factor score
+ *                 BusFactorLatency:
+ *                   type: number
+ *                   description: Latency for calculating bus factor
+ *                 Correctnesss:
+ *                   type: number
+ *                   description: Correctness score
+ *                 CorrectnessLatency:
+ *                   type: number
+ *                   description: Latency for correctness calculation
+ *                 RampUp:
+ *                   type: number
+ *                   description: Ramp-up time score
+ *                 RampUpLatency:
+ *                   type: number
+ *                   description: Latency for ramp-up time calculation
+ *                 ResponsiveMaintainer:
+ *                   type: number
+ *                   description: Responsive maintainer score
+ *                 ResponsiveMaintainerLatency:
+ *                   type: number
+ *                   description: Latency for responsive maintainer calculation
+ *                 LicenseScore:
+ *                   type: number
+ *                   description: License score
+ *                 LicenseScoreLatency:
+ *                   type: number
+ *                   description: Latency for license score calculation
+ *                 GoodPinningPractice:
+ *                   type: number
+ *                   description: Good pinning practice score
+ *                 GoodPinningPracticeLatency:
+ *                   type: number
+ *                   description: Latency for good pinning practice calculation
+ *                 PullRequest:
+ *                   type: number
+ *                   description: Pull request score
+ *                 PullRequestLatency:
+ *                   type: number
+ *                   description: Latency for pull request score calculation
+ *                 NetScore:
+ *                   type: number
+ *                   description: Overall net score
+ *                 NetScoreLatency:
+ *                   type: number
+ *                   description: Latency for net score calculation
+ *       400:
+ *         description: Missing package ID
+ *       403:
+ *         description: Missing or invalid authentication, or wrong user group access
+ *       404:
+ *         description: Package not found
+ *       500:
+ *         description: Package rating calculation failed
  */
 app.get('/package/:id/rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
