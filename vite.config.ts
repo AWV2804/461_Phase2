@@ -15,7 +15,7 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'html'], // Add 'html' for detailed report
       reportsDirectory: './coverage',
       include: ['src/**/*.js', 'src/**/*.jsx', 'src/**/*.tsx'], // Include .jsx and .tsx files
-      exclude: ['test/**', '*.ts', 'src/frontend/src/components/*.tsx', 'src/openAPI_controller.**/'],
+      exclude: ['test/**', '*.ts', 'src/frontend/src/components/*.tsx'],
       reportOnFailure: true,
     },
   },
