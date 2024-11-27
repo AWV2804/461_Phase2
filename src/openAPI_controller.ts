@@ -531,7 +531,9 @@ app.post('/package', async (req, res) => {
                 URL = await util.processNPMUrl(URL);
             }
             const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
+            // const distDir = path.join(tempDir, 'dist');
             fs.mkdirSync(tempDir, { recursive: true });
+            // fs.mkdirSync(distDir, { recursive: true });
 
             await git.clone({
                 fs,
