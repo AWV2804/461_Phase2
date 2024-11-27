@@ -1,4 +1,3 @@
-// src/frontend/src/App.tsx
 import React, { useContext } from 'react';
 import { Route, Routes, Link } from 'react-router-dom';
 import Upload from './components/Upload';
@@ -101,19 +100,19 @@ const App: React.FC = () => {
           <Route
             path="/manage"
             element={
-            <ProtectedRoute>
+              <ProtectedRoute>
                 <Manage />
-            </ProtectedRoute>
+              </ProtectedRoute>
             }
           />
-            <Route
-                path="/rate"
-                element={
-                <ProtectedRoute>
-                    <Rate />
-                </ProtectedRoute>
-                }
-            />
+          <Route
+            path="/rate"
+            element={
+              <ProtectedRoute>
+                <Rate />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
       </div>
