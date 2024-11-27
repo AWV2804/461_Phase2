@@ -101,34 +101,38 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  */
 // TODO: HAVE TO ADD AUTHENTICATION PARSING
 app.delete('/reset', async (req, res) => {
-    const authToken = req.headers['X-Authorization'] || req.headers['x-authorization'];
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(authToken == '' || authToken == null) {
         logger.error('Missing Authentication Header');
         res.status(403).send('Missing Authentication Header');
     }
-    if (authToken != monkeyBusiness) {
-        logger.error('You do not have the correct permissions to delete the database.');
-        res.status(401).send('You do not have the correct permissions to delete the database.');
-    } else {
-        try {
-            const result = await db.deleteDB(packageDB[1]);
-            const result2 = await db.deleteUsersExcept(UserModel);
-            if (result[0] == true && result2[0] == true) {
-                logger.info('Registry is reset.');
-                return res.status(200).send('Registry is reset.');
-            } else if(result[0] == false) {
-                logger.error('Error deleting database:', result[1]);
-                return res.status(500).send('Error deleting database');
-            } else if(result2[0] == false) {
-                logger.error('Error deleting user:', result2[1]);
-                return res.status(500).send('Error deleting user');
-            }
-            
-            
-        } catch (error) {
-            logger.error('Error deleting database:', error);
-            res.status(500).send('Error deleting database');
+    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+    if(updatedToken instanceof Error) {
+        logger.error('Invalid or expired token');
+        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+    }
+    if(isAdmin != true) {
+        logger.error('You do not have the correct permissions to reset the registry.');
+        return res.status(403).send('You do not have the correct permissions to reset the registry.')
+    }
+    try {
+        const result = await db.deleteDB(packageDB[1]);
+        const result2 = await db.deleteUsersExcept(UserModel);
+        if (result[0] == true && result2[0] == true) {
+            logger.info('Registry is reset.');
+            return res.status(200).send('Registry is reset.');
+        } else if(result[0] == false) {
+            logger.error('Error deleting database:', result[1]);
+            return res.status(500).send('Error deleting database');
+        } else if(result2[0] == false) {
+            logger.error('Error deleting user:', result2[1]);
+            return res.status(500).send('Error deleting user');
         }
+        
+        
+    } catch (error) {
+        logger.error('Error deleting database:', error);
+        res.status(500).send('Error deleting database');
     }
 });
 
@@ -295,35 +299,28 @@ app.post('/package', async (req, res) => {
                         JSProgram: JSProgram || '',
                     },
                 };
-                // let tempDir = ''
-                // if(debloat == true) {
-                //     // Extract JavaScript files and perform tree shaking
-                //     tempDir = path.join(__dirname, 'temp'); // Temporary directory for unzipped files
-                //     fs.mkdirSync(tempDir, { recursive: true });
-                //     await util.extractFiles(zip, tempDir);
-                //     await util.treeShakePackage(tempDir);
-                // }
                 
                 const [package_rating, package_net] = await rate(repoUrl);
                 if (package_net >= 0.5) {
-                    // let updatedBase64 = Content;
-                    // if(debloat == true) {
-                    //     const updatedZipBuffer = await util.createZipFromDir(tempDir);
-
-                    //     // Re-encode the updated zip to base64
-                    //     updatedBase64 = updatedZipBuffer.toString('base64');
-                    // }
-
-                    await s3.uploadContentToS3(base64Zip, packageId);
                     const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "Content", readMeContent, secret, userGroup);
-                    if (result[0] == true) {
-                        logger.info(`Package ${packageName} uploaded with score: ${package_rating}`);
-
-                        return res.status(201).send(jsonResponse);
-                    } else {
+                    if(result[0] == false) {
                         logger.error(`Error uploading package:`, packageName);
                         return res.status(500).send('Error uploading package');
                     }
+                    try {
+                        await s3.uploadContentToS3(base64Zip, packageId);
+                    } catch (e) {
+                        logger.error('Error uploading content to S3:', e);
+                        const removed = await db.removePackageByNameOrHash(packageId, Package);
+                        if (removed == false) {
+                            logger.error('Error removing package from mongo');
+                        } else logger.error('Package removed from mongo');
+                        return res.status(500).send('Error uploading content to S3');
+                    }
+                    logger.info(`Package ${packageName} uploaded with score: ${package_rating}`);
+
+                    return res.status(201).send(jsonResponse);  
+                    
                 } else {
                     const jsonResponse = {
                         metadata: {
@@ -452,15 +449,23 @@ app.post('/package', async (req, res) => {
                 };
                 console.log(package_net);
                 if (package_net >= 0.5) {
-                    await s3.uploadContentToS3(base64Zip, packageId);
                     const result = await db.addNewPackage(package_name, URL, Package, packageId, package_rating, version, package_net, "URL", readmeContent, secret, userGroup);
-                    if (result[0] == true) {
-                        logger.info(`Package ${package_name} uploaded with score: ${package_rating}`);
-                        return res.status(201).send(jsonResponse);
-                    } else {
+                    if (result[0] == false) {
                         logger.error(`Error uploading package:`, package_name);
                         return res.status(500).send('Error uploading package');
                     }
+                    try {
+                        await s3.uploadContentToS3(base64Zip, packageId);
+                    } catch (e) {
+                        logger.error('Error uploading content to S3:', e);
+                        const removed = await db.removePackageByNameOrHash(packageId, Package);
+                        if (removed == false) {
+                            logger.error('Error removing package from mongo');
+                        } else logger.error('Package removed from mongo');  
+                        return res.status(500).send('Error uploading content to S3');
+                    }
+                    return res.status(201).send(jsonResponse);
+                    
                 } else {
                     const jsonResponse = {
                         metadata: {
@@ -517,10 +522,7 @@ app.get('/package/:id/rate', async (req, res) => {
         logger.error('Invalid or expired token');
         return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
     }
-    if(isAdmin != true) {
-        logger.error('You do not have the correct permissions to upload to the database.');
-        return res.status(403).send('You do not have the correct permissions to upload to the database.')
-    }
+    
     const packageId = req.params.id;
     if(packageId == '' || packageId == null) {
         logger.error('Missing package ID');
@@ -603,25 +605,30 @@ app.put('/authenticate', async (req, res) => {
 
 app.get('/package/:id', async (req, res) => {
     try {
-        const token = req.headers['X-Authorization'] || req.headers['x-authorization']
+        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
         if (token == '' || token == null) { 
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
-        } else if (token != monkeyBusiness) {
-            logger.info(`Authentication failed due to insufficient permissions`);
-            return res.status(403).send(`Authentication failed due to insufficient permissions`);
+        } 
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        if (updatedToken instanceof Error) {
+            logger.info('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
+
         const packageID = req.params.id;
         if (!packageID || typeof packageID !== 'string') {
             logger.info('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
             return res.status(400).send('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
         }
-        
         const packageInfo = await db.getPackagesByNameOrHash(packageID, Package);
         if (!packageInfo[0]) {
             return res.status(404).send('Package not found: ' + packageInfo[1]);
         }
-
+        if(packageInfo[1]["secret"] && packageInfo[1]["userGroup"] != userGroup) {
+            logger.error("No access: Wrong user group");
+            return res.status(403).send("No access: Wrong user group"); 
+        }
         const packageContent = s3.requestContentFromS3(packageID);
 
         logger.info('Successfully retrieved package content and info');
@@ -635,15 +642,20 @@ app.get('/package/:id', async (req, res) => {
 
 app.post('/package/:id', async (req, res) => { // change return body? right now not returning the new package info
     try {
-        const token = req.headers['X-Authorization'] || req.headers['x-authorization']
+        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
         if (token == '' || token == null) { 
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
-        } else if (token != monkeyBusiness) {
-            logger.info(`Authentication failed due to insufficient permissions`);
-            return res.status(403).send(`Authentication failed due to insufficient permissions`);
+        } 
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        if (updatedToken instanceof Error) {
+            logger.info('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
-        
+        if(isAdmin != true) {
+            logger.error('You do not have the correct permissions to upload to the database.');
+            return res.status(403).send('You do not have the correct permissions to upload to the database.')
+        }
         const { metadata, data } = req.body
         if ((!data['Content'] && !data['URL']) || (data['Content'] && data['URL'])) {
             logger.info('Either content and URL were set, or neither were set.');
