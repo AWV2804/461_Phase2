@@ -9,7 +9,8 @@ import logger from './logging.js';
 export const userSchema = new mongoose.Schema({
     username: String,
     isAdmin: Boolean,
-    userHash: String
+    userHash: String,
+    userGroup: String
 });
 /**
  * Schema for how entries are stored in the database for packages
@@ -23,7 +24,9 @@ export const packageSchema = new mongoose.Schema({
     packageId: String,
     netScore: Number,
     ingestionMethod: String,
-    README: String
+    README: String,
+    secret: Boolean,
+    userGroup: String
 });
 
 // might want to make this just go update if it finds that a package with the same name is already present
@@ -36,7 +39,7 @@ export const packageSchema = new mongoose.Schema({
  * @param previousVersion Optional previous versions for package
  * @returns savedPackage of the package saved or error if the package couldn't be stored
  */
-export async function addNewPackage(name: String, url: String, Package: mongoose.Model<any>, packageId?: String, score?: String, version?: String, netScore?: Number, ingestionMethod?: String, README?: String) {
+export async function addNewPackage(name: String, url: String, Package: mongoose.Model<any>, packageId?: String, score?: String, version?: String, netScore?: Number, ingestionMethod?: String, README?: String, secret?: Boolean, userGroup?: String) {
     const newPackage = new Package({
         name: name,
         url: url,
@@ -45,7 +48,9 @@ export async function addNewPackage(name: String, url: String, Package: mongoose
         packageId: packageId,
         netScore: netScore,
         ingestionMethod: ingestionMethod,
-        README: README
+        README: README,
+        secret: secret,
+        userGroup: userGroup
     });
 
     try {
@@ -221,12 +226,13 @@ export async function deleteUsersExcept(User: mongoose.Model<any>): Promise<[boo
     }
 }
 
-export async function addUser(username: String, userHash: String, isAdmin: Boolean, User: mongoose.Model<any>) {
+export async function addUser(username: String, userHash: String, isAdmin: Boolean, userGroup: String, User: mongoose.Model<any>) {
     try {
         const newUser = new User({
             username: username,
             isAdmin: isAdmin,
-            userHash: userHash
+            userHash: userHash,
+            userGroup: userGroup
         });
         const user = await getUserByName(username, User);
         if(user[0] == true) {

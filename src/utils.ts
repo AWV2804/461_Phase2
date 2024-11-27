@@ -11,14 +11,23 @@ import logger from './logging.js';
 import axios from 'axios';
 import * as s3 from './s3_utils.js';
 import { useCallback } from 'react';
-
+import jwt from 'jsonwebtoken';
+import esbuild from 'esbuild';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const SECRET_KEY = process.env.SECRET_KEY
 // Interface for Package JSON structure
 export interface PackageJson {
     dependencies?: { [key: string]: string };
     [key: string]: any; // To accommodate other possible fields
+}
+
+interface CustomPayload {
+    usageCount: number;
+    exp: number;
+    isAdmin: boolean;
+    userGroup: string;
 }
 
 /**
@@ -83,6 +92,7 @@ export async function processGithubURL(url: string): Promise<string | null> {
         return zip.toBuffer().toString('base64');
     } catch(error) {
         logger.error('Error processing package content from URL:', error);
+        return null;
     } finally {
         fs.rmSync(tempDir, { recursive: true });
     }
@@ -185,4 +195,82 @@ export function findAndReadReadme(possibleReadmeFiles: string[], dirPath: string
         }
     }
     return '';
+}
+
+export function generateToken(isAdmin: boolean, userGroup: string): string {
+    const payload: CustomPayload = {
+        usageCount: 0,
+        exp: Math.floor(Date.now() / 1000) + 10 * 60 * 60,
+        isAdmin: isAdmin,
+        userGroup: userGroup
+    };
+    return jwt.sign(payload, SECRET_KEY);
+}
+
+export function verifyToken(token: string): { updatedToken: string | Error; isAdmin: boolean | null; userGroup: string | null } {
+    try {
+        const payload = jwt.verify(token, SECRET_KEY) as CustomPayload;
+        if(payload.usageCount >= 1000) {
+            console.error('Token has expired');
+            return { updatedToken: Error('Token has expired'), isAdmin: null, userGroup: null };
+        }
+        payload.usageCount++;
+        
+        const updatedToken = jwt.sign(payload, SECRET_KEY);
+
+        return { updatedToken, isAdmin: payload.isAdmin, userGroup: payload.userGroup };
+    } catch (error) {
+        if(error instanceof jwt.TokenExpiredError) {
+            console.error('Token has expired');
+        } else {
+            console.error('Invalid token');
+        }
+        return { updatedToken: error, isAdmin: null, userGroup: null };
+    }
+}
+
+// Function to extract files from ZIP
+export async function extractFiles(input: AdmZip | string, outputDir: string) {
+    if (input instanceof AdmZip) {
+        input.getEntries().forEach((zipEntry) => {
+            const filePath = path.join(outputDir, zipEntry.entryName);
+            if (!zipEntry.isDirectory) {
+                zipEntry.extractTo(path.dirname(filePath), true);
+            }
+        });
+    } else if (typeof input === 'string') {
+        const files = fs.readdirSync(input);
+        files.forEach((file) => {
+            const filePath = path.join(input, file);
+            const stat = fs.statSync(filePath);
+            if (stat.isDirectory()) {
+                const newDir = path.join(outputDir, file);
+                fs.mkdirSync(newDir, { recursive: true });
+                extractFiles(filePath, newDir);
+            } else {
+                const fileBuffer = fs.readFileSync(filePath);
+                fs.writeFileSync(path.join(outputDir, file), fileBuffer);
+            }
+        });
+    }
+}
+
+// Function to perform tree shaking with esbuild
+export async function treeShakePackage(inputDir: string) {
+    await esbuild.build({
+        entryPoints: [inputDir], // Replace with correct entry file
+        bundle: true,
+        treeShaking: true,
+        minify: true,
+        outdir: inputDir,
+        platform: 'node',
+        target: 'esnext',
+    });
+}
+
+// Function to create a ZIP file from a directory
+export async function createZipFromDir(dir: string) {
+    const zip = new AdmZip();
+    zip.addLocalFolder(dir);
+    return zip.toBuffer();
 }
