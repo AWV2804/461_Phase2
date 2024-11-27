@@ -165,7 +165,7 @@ app.post('/package', async (req, res) => {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    console.log(token);
+    // console.log(token);
     const {updatedToken, isAdmin, userGroup} = util.verifyToken(token);
     if(updatedToken instanceof Error) {
         logger.error('Invalid or expired token');
@@ -190,158 +190,158 @@ app.post('/package', async (req, res) => {
     }
 
     // Process the uploaded package (dummy processing for this example)
-        if (Content) {
-            // Handle the base64-encoded content
-            console.log("Processing package from content.");
-            try {
-                // Decode the base64-encoded zip file
-                const buffer = Buffer.from(Content, 'base64');
-        
-                // Load the zip file using adm-zip
-                // const AdmZip = require('adm-zip');
-                const zip = new AdmZip(buffer);
-        
-                // Find the package.json file within the zip entries
-                let packageJsonEntry = null;
-                let readMeContent = '';
-                zip.getEntries().forEach(function(zipEntry) {
-                    if (zipEntry.entryName.endsWith('package.json')) {
-                        packageJsonEntry = zipEntry;
-                    }
-                    for (const file of possibleReadmeFiles) {
-                        if (zipEntry.entryName.endsWith(file)) {
-                            readMeContent = zipEntry.getData().toString('utf8');
-                        }
-                    }
-                });
-        
-                if (!packageJsonEntry) {
-                    return res.status(400).json({ error: "package.json not found in the provided content." });
+    if (Content) {
+        // Handle the base64-encoded content
+        console.log("Processing package from content.");
+        try {
+            // Decode the base64-encoded zip file
+            const buffer = Buffer.from(Content, 'base64');
+    
+            // Load the zip file using adm-zip
+            // const AdmZip = require('adm-zip');
+            const zip = new AdmZip(buffer);
+    
+            // Find the package.json file within the zip entries
+            let packageJsonEntry = null;
+            let readMeContent = '';
+            zip.getEntries().forEach(function(zipEntry) {
+                if (zipEntry.entryName.endsWith('package.json')) {
+                    packageJsonEntry = zipEntry;
                 }
-        
-                // Read and parse the package.json file
-                const packageJsonContent = packageJsonEntry.getData().toString('utf8');
-                const packageJson = JSON.parse(packageJsonContent);
-        
-                // Extract the repository link and package name
-                const repository = packageJson.repository;
-                let repoUrl = '';
-                if (typeof repository === 'string') {
-                    repoUrl = repository;
-                } else if (repository && repository.url) {
-                    repoUrl = repository.url;
-                }
-                repoUrl = util.parseRepositoryUrl(repoUrl).toString();
-                const packageName = packageJson.name;
-        
-                // Log or use the extracted information as needed
-                // console.log('Package Name:', packageName);
-                // console.log('Repository URL:', repoUrl);
-                let base64Zip = '';
-                const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
-                const distDir = path.join(tempDir, 'dist');
-                fs.mkdirSync(distDir, { recursive: true });
-                if (debloat) {
-                    
-                    // Extract files and perform tree shaking
-                    await util.extractFiles(zip, distDir);
-                    await util.treeShakePackage(distDir);
-
-                    // Create a new ZIP file with tree-shaken code
-                    const updatedZipBuffer = await util.createZipFromDir(distDir);
-
-                    // Encode the zip buffer as Base64
-                    base64Zip = updatedZipBuffer.toString('base64');
-                } else {
-                    // If debloat is false, just zip the original content
-                    const zipBuffer = zip.toBuffer();
-                    base64Zip = zipBuffer.toString('base64');
-                }
-                fs.rmSync(tempDir, { recursive: true, force: true });
-                // TODO: Rework the get into get all packages and then get the latest one
-                const pkg = await db.getPackagesByNameOrHash(packageName, Package);
-                if(pkg[0] == true) {
-                    logger.info(`Package ${packageName} already exists with score: ${pkg[1]["score"]}`);
-                    const version = pkg[1]["version"];
-                    const packageId = SHA256(packageName + version).toString();
-                    const jsonResponse = {
-                        metadata: {
-                            Name: packageName,
-                            Version: version,
-                            ID: packageId,
-                            Token: updatedToken,
-                        },
-                        data: {
-                            Content: base64Zip,
-                            JSProgram: JSProgram || '',
-                        },
-                    };
-                    return res.status(409).send(jsonResponse);
-                } else {
-                    let version = packageJson.version;
-                    if(version == null || version == "") {
-                        version = '1.0.0';
-                    }
-                    const packageId = SHA256(packageName + version).toString();
-                    const jsonResponse = {
-                        metadata: {
-                            Name: packageName,
-                            Version: version,
-                            ID: packageId,
-                            Token: updatedToken,
-                        },
-                        data: {
-                            Content: base64Zip,
-                            JSProgram: JSProgram || '',
-                        },
-                    };
-                    // let tempDir = ''
-                    // if(debloat == true) {
-                    //     // Extract JavaScript files and perform tree shaking
-                    //     tempDir = path.join(__dirname, 'temp'); // Temporary directory for unzipped files
-                    //     fs.mkdirSync(tempDir, { recursive: true });
-                    //     await util.extractFiles(zip, tempDir);
-                    //     await util.treeShakePackage(tempDir);
-                    // }
-                  
-                    const [package_rating, package_net] = await rate(repoUrl);
-                    if (package_net >= 0.5) {
-                        // let updatedBase64 = Content;
-                        // if(debloat == true) {
-                        //     const updatedZipBuffer = await util.createZipFromDir(tempDir);
-
-                        //     // Re-encode the updated zip to base64
-                        //     updatedBase64 = updatedZipBuffer.toString('base64');
-                        // }
-
-                        await s3.uploadContentToS3(base64Zip, packageId);
-                        const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "Content", readMeContent, secret, userGroup);
-                        if (result[0] == true) {
-                            logger.info(`Package ${packageName} uploaded with score: ${package_rating}`);
-
-                            return res.status(201).send(jsonResponse);
-                        } else {
-                            logger.error(`Error uploading package:`, packageName);
-                            return res.status(500).send('Error uploading package');
-                        }
-                    } else {
-                        const jsonResponse = {
-                            metadata: {
-                                Token: updatedToken,
-                            },
-                            data: {
-                                packageRating: package_rating,
-                            },
-                        };
-                        logger.info(`Package ${packageName} rating too low: ${package_rating}`);
-                        return res.status(424).send(jsonResponse);
+                for (const file of possibleReadmeFiles) {
+                    if (zipEntry.entryName.endsWith(file)) {
+                        readMeContent = zipEntry.getData().toString('utf8');
                     }
                 }
-            } catch (error) {
-                console.error('Error processing package content:', error);
-                return res.status(500).json({ error: 'Failed to process package content.' });
+            });
+    
+            if (!packageJsonEntry) {
+                return res.status(400).json({ error: "package.json not found in the provided content." });
             }
-        } else if (URL) {
+    
+            // Read and parse the package.json file
+            const packageJsonContent = packageJsonEntry.getData().toString('utf8');
+            const packageJson = JSON.parse(packageJsonContent);
+    
+            // Extract the repository link and package name
+            const repository = packageJson.repository;
+            let repoUrl = '';
+            if (typeof repository === 'string') {
+                repoUrl = repository;
+            } else if (repository && repository.url) {
+                repoUrl = repository.url;
+            }
+            repoUrl = util.parseRepositoryUrl(repoUrl).toString();
+            const packageName = packageJson.name;
+    
+            // Log or use the extracted information as needed
+            // console.log('Package Name:', packageName);
+            // console.log('Repository URL:', repoUrl);
+            let base64Zip = '';
+            const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
+            // const distDir = path.join(tempDir, 'dist');
+            fs.mkdirSync(tempDir, { recursive: true });
+            if (debloat) {
+                
+                // Extract files and perform tree shaking
+                await util.extractFiles(zip, tempDir);
+                await util.treeShakePackage(tempDir);
+
+                // Create a new ZIP file with tree-shaken code
+                const updatedZipBuffer = await util.createZipFromDir(tempDir);
+
+                // Encode the zip buffer as Base64
+                base64Zip = updatedZipBuffer.toString('base64');
+            } else {
+                // If debloat is false, just zip the original content
+                const zipBuffer = zip.toBuffer();
+                base64Zip = zipBuffer.toString('base64');
+            }
+            fs.rmSync(tempDir, { recursive: true, force: true });
+            // TODO: Rework the get into get all packages and then get the latest one
+            const pkg = await db.getPackagesByNameOrHash(packageName, Package);
+            if(pkg[0] == true) {
+                logger.info(`Package ${packageName} already exists with score: ${pkg[1]["score"]}`);
+                const version = pkg[1]["version"];
+                const packageId = SHA256(packageName + version).toString();
+                const jsonResponse = {
+                    metadata: {
+                        Name: packageName,
+                        Version: version,
+                        ID: packageId,
+                        Token: updatedToken,
+                    },
+                    data: {
+                        Content: base64Zip,
+                        JSProgram: JSProgram || '',
+                    },
+                };
+                return res.status(409).send(jsonResponse);
+            } else {
+                let version = packageJson.version;
+                if(version == null || version == "") {
+                    version = '1.0.0';
+                }
+                const packageId = SHA256(packageName + version).toString();
+                const jsonResponse = {
+                    metadata: {
+                        Name: packageName,
+                        Version: version,
+                        ID: packageId,
+                        Token: updatedToken,
+                    },
+                    data: {
+                        Content: base64Zip,
+                        JSProgram: JSProgram || '',
+                    },
+                };
+                // let tempDir = ''
+                // if(debloat == true) {
+                //     // Extract JavaScript files and perform tree shaking
+                //     tempDir = path.join(__dirname, 'temp'); // Temporary directory for unzipped files
+                //     fs.mkdirSync(tempDir, { recursive: true });
+                //     await util.extractFiles(zip, tempDir);
+                //     await util.treeShakePackage(tempDir);
+                // }
+                
+                const [package_rating, package_net] = await rate(repoUrl);
+                if (package_net >= 0.5) {
+                    // let updatedBase64 = Content;
+                    // if(debloat == true) {
+                    //     const updatedZipBuffer = await util.createZipFromDir(tempDir);
+
+                    //     // Re-encode the updated zip to base64
+                    //     updatedBase64 = updatedZipBuffer.toString('base64');
+                    // }
+
+                    await s3.uploadContentToS3(base64Zip, packageId);
+                    const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "Content", readMeContent, secret, userGroup);
+                    if (result[0] == true) {
+                        logger.info(`Package ${packageName} uploaded with score: ${package_rating}`);
+
+                        return res.status(201).send(jsonResponse);
+                    } else {
+                        logger.error(`Error uploading package:`, packageName);
+                        return res.status(500).send('Error uploading package');
+                    }
+                } else {
+                    const jsonResponse = {
+                        metadata: {
+                            Token: updatedToken,
+                        },
+                        data: {
+                            packageRating: package_rating,
+                        },
+                    };
+                    logger.info(`Package ${packageName} rating too low: ${package_rating}`);
+                    return res.status(424).send(jsonResponse);
+                }
+            }
+        } catch (error) {
+            console.error('Error processing package content:', error);
+            return res.status(500).json({ error: 'Failed to process package content.' });
+        }
+    } else if (URL) {
         // Handle the URL for the package
         console.log("Processing package from URL.");
         try {
@@ -507,14 +507,19 @@ app.post('/package', async (req, res) => {
  *                  description: Error rating package
  */
 app.get('/package/:id/rate', async (req, res) => {
-    const authToken = req.headers['X-Authorization'] || req.headers['x-authorization'];
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(authToken == '' || authToken == null) {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    if (authToken != monkeyBusiness) {
-        logger.error('You do not have the correct permissions to delete the database.');
-        return res.status(403).send('You do not have the correct permissions to delete the database.');
+    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+    if(updatedToken instanceof Error) {
+        logger.error('Invalid or expired token');
+        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+    }
+    if(isAdmin != true) {
+        logger.error('You do not have the correct permissions to upload to the database.');
+        return res.status(403).send('You do not have the correct permissions to upload to the database.')
     }
     const packageId = req.params.id;
     if(packageId == '' || packageId == null) {
@@ -525,6 +530,10 @@ app.get('/package/:id/rate', async (req, res) => {
     if(pkg[0] == false) {
         logger.error('Package not found');
         return res.status(404).send('Package not found');
+    }
+    if(pkg[1]["secret"] && pkg[1]["userGroup"] != userGroup) {
+        logger.error("No access: Wrong user group");
+        return res.status(403).send("No access: Wrong user group");
     }
     const scoreObject = JSON.parse(pkg[1]["score"]);
     const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
@@ -840,6 +849,16 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
 
 app.post('/package/byRegEx', async (req, res) => {
     // Auth heaader stuff
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
+    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+    if(updatedToken instanceof Error) {
+        logger.error('Invalid or expired token');
+        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+    }
+    // if(isAdmin != true) {
+    //     logger.error('You do not have the correct permissions to upload to the database.');
+    //     return res.status(403).send('You do not have the correct permissions to upload to the database.')
+    // }
     const { RegEx } = req.body;
     if (!RegEx) {
         return res.status(400).json({ error: 'Malformed Request' });
@@ -852,7 +871,14 @@ app.post('/package/byRegEx', async (req, res) => {
         logger.info('No packages found');
         return res.status(404).send('No packages found');
     }
-    const formattedPackages = packages.map((pkg: any) => ({
+    const accessiblePackages = packages.filter(pkg => {
+        if (pkg["secret"] && pkg["userGroup"] != userGroup) {
+            logger.error(`No access to package ${pkg["name"]}: Wrong user group`);
+            return false; // Exclude this package
+        }
+        return true; // Include this package
+    });
+    const formattedPackages = accessiblePackages.map((pkg: any) => ({
         Version: pkg.version,
         Name: pkg.name,
         ID: pkg.packageId, // Use packageId if available, fallback to id
@@ -903,7 +929,7 @@ app.post('/package/byRegEx', async (req, res) => {
  *                     description: >
  *                       The total cost of the package. If `dependency=false`, it's equal to `standaloneCost`.
  *                       If `dependency=true`, it's the sum of `standaloneCost` and all dependencies' costs.
- *               example:
+ *               example: | 
  *                 "357898765": {
  *                   "standaloneCost": 50.0,
  *                   "totalCost": 95.0
@@ -923,7 +949,7 @@ app.post('/package/byRegEx', async (req, res) => {
  */
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
-    const authToken = req.headers['x-authorization'] || req.headers['X-Authorization'];
+    const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
     const dependencyParam = req.query.dependency;
     const dependency = dependencyParam === 'true'; // Defaults to false
 
@@ -932,13 +958,27 @@ app.get('/package/:id/cost', async (req, res) => {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    if (authToken !== monkeyBusiness) {
-        logger.error('Invalid Authentication Token');
-        return res.status(403).send('Invalid Authentication Token');
+    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+    if(updatedToken instanceof Error) {
+        logger.error('Invalid or expired token');
+        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
     }
 
     const packageId = req.params.id;
+    const [success, packageInfo] = await db.getPackagesByNameOrHash(packageId, Package);
+    if(!success && packageInfo[0] == -1) {
+        logger.error('Package does not exist');
+        return res.status(404).send('Package does not exist');
+    }
+    if(!success) {
+        logger.error('Error retrieving package info:', packageInfo);
+        return res.status(500).send('Server error while retrieving package info.');
+    }
 
+    if(packageInfo[0]["secret"] && packageInfo[0]["userGroup"] != userGroup) {
+        logger.error("No access: Wrong user group");
+        return res.status(403).send("No access: Wrong user group");   
+    }
     // Validate Package ID
     if (!packageId || typeof packageId !== 'string') {
         logger.error('Missing or invalid Package ID');

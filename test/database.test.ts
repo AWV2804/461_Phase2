@@ -153,7 +153,7 @@ describe('User Functions', () => {
      */
     test('addUser should handle error on user save failure', async () => {
         User.prototype.save.mockRejectedValueOnce(new Error('Save failed'));
-        const response = await addUser('FailUser', 'userhash', true, User);
+        const response = await addUser('FailUser', 'userhash', true, '', User);
         expect(response[0]).toBe(false);
     });
 
