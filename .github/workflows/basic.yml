@@ -12,7 +12,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      USER_NAME: ${{ secrets.USER_NAME }}
+      PASSWORD: ${{ secrets.PASSWORD }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PORT: ${{ secrets.PORT }}
+      REACT_APP_BACKEND_PORT: ${{ secrets.REACT_APP_BACKEND_PORT }}
+      
     steps:
       # Step 1: Checkout the code from the repository
       - name: Checkout Code
