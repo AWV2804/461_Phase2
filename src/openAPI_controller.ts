@@ -718,13 +718,21 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
         // load the zip file
         const zip = new AdmZip(buffer);
         let packageJsonEntry = null;
+        let readMeContent = '';
 
         // find the package.json file
         zip.getEntries().forEach(function(zipEntry) {
             if (zipEntry.entryName.endsWith('package.json')) {
                 packageJsonEntry = zipEntry;
             }
+
+            for (const file of possibleReadmeFiles) {
+                if (zipEntry.entryName.endsWith(file)) {
+                    readMeContent = zipEntry.getData().toString('utf8');
+                }
+            }
         });
+        if (!readMeContent) logger.info('No README file found');
 
         if (!packageJsonEntry) {
             logger.info('package.json not found in the provided content.');
@@ -789,14 +797,25 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 return patchB - patchA; // sort in descending order
             });
 
-            //DEBLOATING STUFF GOES HERE
+            const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
+            let base64zip = '';
+            if (debloat) {
+                await util.extractFiles(zip, tempDir);
+                await util.treeShakePackage(tempDir);
+                const updatedZipBuffer = await util.createZipFromDir(tempDir);
+                base64zip = updatedZipBuffer.toString('base64');
+            } else {
+                // zip up the original content
+                const zipBuffer = zip.toBuffer();
+                base64zip = zipBuffer.toString('base64');
+            }
 
             const newPackageID = SHA256(packageName + version).toString();
             if (matches.length == 0) {
-                await s3.uploadContentToS3(content, newPackageID);
+                await s3.uploadContentToS3(base64zip, newPackageID);
                 const result = await db.addNewPackage( // talk to adhvik. should be using update package or add new package?
                     packageName, url, Package, newPackageID, package_rating, version, package_net, 
-                    isUrl ? "URL" : "Content");
+                    isUrl ? "URL" : "Content", readMeContent);
                     
                 if (result[0] == true) {
                     logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
@@ -810,9 +829,9 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                     logger.info('Package with version ${version} already exists');
                     return res.status(409).send('Package with version ${version} already exists');
                 } else {
-                    await s3.uploadContentToS3(content, newPackageID);
+                    await s3.uploadContentToS3(base64zip, newPackageID);
                     const result = await db.addNewPackage(
-                        packageName, url, Package, newPackageID, package_rating, version, package_net, "URL");
+                        packageName, url, Package, newPackageID, package_rating, version, package_net, "URL", readMeContent);
                     if (result[0] == true) {
                         logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                         return res.status(200).send('Package has been updated');
@@ -825,9 +844,9 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 // uploaded via content
                 const latestUploadedPatch = parseInt(matches[0].split('.')[2]);
                 if (parseInt(patchKey) > latestUploadedPatch) {
-                    await s3.uploadContentToS3(content, newPackageID);
+                    await s3.uploadContentToS3(base64zip, newPackageID);
                     const result = await db.addNewPackage(
-                        packageName, url, Package, newPackageID, package_rating, version, package_net, "Content");
+                        packageName, url, Package, newPackageID, package_rating, version, package_net, "Content", readMeContent,);
                     if (result[0] == true) {
                         logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                         return res.status(200).send('Package has been updated');
