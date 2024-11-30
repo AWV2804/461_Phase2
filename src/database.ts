@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 const rootName = 'ece30861defaultadminuser'
 import logger from './logging.js';
+import dotenv from 'dotenv';
 
+dotenv.config();
 // Define a schema
 /**
  * Schema for how entries are stored in the database for users
@@ -9,7 +11,8 @@ import logger from './logging.js';
 export const userSchema = new mongoose.Schema({
     username: String,
     isAdmin: Boolean,
-    userHash: String
+    userHash: String,
+    userGroup: String
 });
 /**
  * Schema for how entries are stored in the database for packages
@@ -23,7 +26,9 @@ export const packageSchema = new mongoose.Schema({
     packageId: String,
     netScore: Number,
     ingestionMethod: String,
-    README: String
+    README: String,
+    secret: Boolean,
+    userGroup: String
 });
 
 // might want to make this just go update if it finds that a package with the same name is already present
@@ -36,7 +41,7 @@ export const packageSchema = new mongoose.Schema({
  * @param previousVersion Optional previous versions for package
  * @returns savedPackage of the package saved or error if the package couldn't be stored
  */
-export async function addNewPackage(name: String, url: String, Package: mongoose.Model<any>, packageId?: String, score?: String, version?: String, netScore?: Number, ingestionMethod?: String, README?: String) {
+export async function addNewPackage(name: String, url: String, Package: mongoose.Model<any>, packageId?: String, score?: String, version?: String, netScore?: Number, ingestionMethod?: String, README?: String, secret?: Boolean, userGroup?: String) {
     const newPackage = new Package({
         name: name,
         url: url,
@@ -45,7 +50,9 @@ export async function addNewPackage(name: String, url: String, Package: mongoose
         packageId: packageId,
         netScore: netScore,
         ingestionMethod: ingestionMethod,
-        README: README
+        README: README,
+        secret: secret,
+        userGroup: userGroup
     });
 
     try {
@@ -58,6 +65,18 @@ export async function addNewPackage(name: String, url: String, Package: mongoose
     }
 }
 
+
+
+export async function removePackageByNameOrHash(identifier: string, Package: mongoose.Model<any>) : Promise<boolean> {
+    try {
+        const result = await Package.deleteOne({ $or : [{ name: identifier }, { packageId: identifier }] });
+        logger.info('Package removed:', result);
+        return true;
+    } catch (error) {
+        logger.debug('Error removing package:', identifier);
+        return false;
+    }
+}
 
 
 /**
@@ -146,7 +165,7 @@ export async function findPackageByRegEx(regex: string, Package: mongoose.Model<
 export function connectToMongoDB(database: string) {
     try {
         // Replace with your actual MongoDB URI
-        const mongoURI = `mongodb+srv://${process.env.USER}:${process.env.PASSWORD}@cluster0.9gpef.mongodb.net/${database}?retryWrites=true&w=majority&appName=Cluster0`;
+        const mongoURI = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.9gpef.mongodb.net/${database}?retryWrites=true&w=majority&appName=Cluster0`;
         // Connect to the MongoDB cluster
         const db = mongoose.createConnection(mongoURI);
         // if(db == null) {
@@ -221,12 +240,13 @@ export async function deleteUsersExcept(User: mongoose.Model<any>): Promise<[boo
     }
 }
 
-export async function addUser(username: String, userHash: String, isAdmin: Boolean, User: mongoose.Model<any>) {
+export async function addUser(username: String, userHash: String, isAdmin: Boolean, userGroup: String, User: mongoose.Model<any>) {
     try {
         const newUser = new User({
             username: username,
             isAdmin: isAdmin,
-            userHash: userHash
+            userHash: userHash,
+            userGroup: userGroup
         });
         const user = await getUserByName(username, User);
         if(user[0] == true) {
@@ -244,6 +264,11 @@ export async function addUser(username: String, userHash: String, isAdmin: Boole
 
 export async function removeUserByName(username: string, User: mongoose.Model<any>) {
     try {
+        const user = await getUserByName(username, User);
+        if (user[0] === false) {
+            logger.info('User does not exist');
+            return [false, Error('User does not exist')];
+        }
         const result = await User.deleteOne({ username });
         logger.info('User removed:', result);
         return [true, result];

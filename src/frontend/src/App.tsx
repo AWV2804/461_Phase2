@@ -1,4 +1,3 @@
-// src/frontend/src/App.tsx
 import React, { useContext } from 'react';
 import { Route, Routes, Link } from 'react-router-dom';
 import Upload from './components/Upload';
@@ -9,6 +8,8 @@ import Search from './components/Search';
 import Update from './components/Update';
 import Cost from './components/Cost';
 import Reset from './components/Reset';
+import Manage from './components/Manage';
+import Rate from './components/Rate';
 import './components/Styling/App.css'; // Import the CSS file for styling
 import { AuthContext } from './AuthContext';
 import ProtectedRoute from './components/ProtectedRoute'; // Import ProtectedRoute
@@ -93,6 +94,22 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute adminOnly>
                 <Reset />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage"
+            element={
+              <ProtectedRoute>
+                <Manage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rate"
+            element={
+              <ProtectedRoute>
+                <Rate />
               </ProtectedRoute>
             }
           />

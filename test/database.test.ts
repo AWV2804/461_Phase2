@@ -143,7 +143,7 @@ describe('User Functions', () => {
     test('addUser should add a user successfully', async () => {
         const userData = { username: 'TestUser', userHash: 'testhash123', isAdmin: true };
         User.prototype.save.mockResolvedValue(userData);
-        const response = await addUser('TestUser', 'testhash123', true, User);
+        const response = await addUser('TestUser', 'testhash123', true, '', User);
         expect(response[0]).toBe(true);
         expect(response[1]).toEqual(userData);
     });
@@ -153,17 +153,63 @@ describe('User Functions', () => {
      */
     test('addUser should handle error on user save failure', async () => {
         User.prototype.save.mockRejectedValueOnce(new Error('Save failed'));
-        const response = await addUser('FailUser', 'userhash', true, User);
+        const response = await addUser('FailUser', 'userhash', true, '', User);
         expect(response[0]).toBe(false);
+    });
+
+    /**
+     * Test to ensure that removing a non-existent user returns false.
+     */
+    test('removeUserByName should return false if user does not exist', async () => {
+        // Mock User.findOne to simulate that the user does not exist
+        User.findOne.mockResolvedValue(null);
+
+        // No need to mock deleteOne since it shouldn't be called
+        // But for safety, you can set up a mock
+        User.deleteOne.mockResolvedValue({ deletedCount: 0 });
+
+        // Call the function under test
+        const [response, error] = await removeUserByName('NonExistentUser', User);
+
+        // // Log the response for debugging (optional)
+        // console.log(response); // Should log: false
+        // console.log(error);    // Should log: Error('User not found')
+
+        // Assert that the deletion was not successful
+        expect(response).toBe(false);
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message).toBe('User does not exist');
+
+        // Assert that deleteOne was not called since user doesn't exist
+        expect(User.deleteOne).not.toHaveBeenCalled();
     });
 
     /**
      * Test to ensure that a user can be removed by name successfully.
      */
     test('removeUserByName should remove a user by name', async () => {
+        // Mock User.findOne to simulate that the user exists
+        User.findOne.mockResolvedValue({
+            username: 'TestUser',
+            userHash: 'testhash123',
+            isAdmin: true,
+            userGroup: 'default'
+        });
+
+        // Mock User.deleteOne to simulate successful deletion
         User.deleteOne.mockResolvedValue({ deletedCount: 1 });
-        const response = await removeUserByName('TestUser', User);
-        expect(response[0]).toBe(true);
+
+        // Call the function under test
+        const [response, result] = await removeUserByName('TestUser', User);
+
+        // Log the response for debugging (optional)
+        console.log(response); // Should log: true
+
+        // Assert that the deletion was successful
+        expect(response).toBe(true);
+
+        // Optionally, you can assert that deleteOne was called with correct parameters
+        expect(User.deleteOne).toHaveBeenCalledWith({ username: 'TestUser' });
     });
 
     /**

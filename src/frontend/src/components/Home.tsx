@@ -18,8 +18,14 @@ const Home: React.FC = () => {
         <Link to="/cost" className="home-link">
             4. Calculate Cost of a Package
         </Link>
+        <Link to="/rate" className="home-link">
+            5. Check Rating of a Package
+        </Link>
         <Link to="/reset" className="home-link">
-            5. Reset Registry
+            6. Reset Registry
+        </Link>
+        <Link to="/manage" className="home-link">
+            7. Manage Accounts
         </Link>
     </div>
   );
