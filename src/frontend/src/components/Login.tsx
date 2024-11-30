@@ -4,13 +4,20 @@ import SHA256 from 'crypto-js/sha256.js';
 import { useNavigate } from 'react-router-dom';
 import './Styling//Login.css';
 import { AuthContext } from '../AuthContext.js'; // Import AuthContext
+import { jwtDecode } from 'jwt-decode'; // Correct import statement
+import './Styling/Login.css';
+
+interface DecodedToken {
+  isAdmin: boolean;
+  userGroup: string;
+  exp: number;
+  usageCount: number;
+}
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
-  const isAdminHash = `\"bearer ${SHA256('isAdmin=1').toString()}\"`;
-  const isNotAdminHash = `\"bearer ${SHA256('isAdmin=0').toString()}\"`;
   const { login } = useContext(AuthContext); // Use AuthContext
 
   // Dynamically construct the backend URL based on the current host
@@ -18,6 +25,7 @@ const Login: React.FC = () => {
     const { protocol, hostname } = window.location;
     return `${protocol}//${hostname}:${process.env.REACT_APP_BACKEND_PORT}${path}`;
   };
+
   // Handle the login action
   const handleLogin = async () => {
     try {
@@ -48,16 +56,15 @@ const Login: React.FC = () => {
       if (response.status === 200) {
         const data = await response.json();
         console.log('Authentication successful:', data.authToken);
-        if (data.authToken === `${isAdminHash}`) {
-          login(true, username, data.authToken);
-          navigate('/'); // Redirect to Home or another page upon successful login
-        } else if (data.authToken === `${isNotAdminHash}`) {
-          login(false, username, data.authToken);
-          navigate('/'); // Redirect to Home or another page upon successful login
-        } else {
-          alert('Hash return invalid');
-        }
         
+        // Decode the token to extract isAdmin information
+        const decodedToken = jwtDecode<DecodedToken>(data.authToken);
+        console.log('Decoded token:', decodedToken);
+        const isAdmin = decodedToken.isAdmin;
+        const userGroup = decodedToken.userGroup;
+        
+        login(isAdmin, username, data.authToken, userGroup);
+        navigate('/'); // Redirect to Home or another page upon successful login
       } else {
         const errorData = await response.json();
         console.error('Authentication failed:', errorData.error);
@@ -93,10 +100,6 @@ const Login: React.FC = () => {
         <button type="button" onClick={handleLogin}>
           Login
         </button>
-        <div style={{ margin: '10px 0' }}></div>
-        {/* <button type="button" onClick={handleMakeAccount}>
-          Make an account
-        </button> */}
       </form>
     </div>
   );

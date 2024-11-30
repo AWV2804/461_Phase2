@@ -12,7 +12,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      USER_NAME: ${{ secrets.USER_NAME }}
+      PASSWORD: ${{ secrets.PASSWORD }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PORT: ${{ vars.PORT }}
+      REACT_APP_BACKEND_PORT: ${{ vars.REACT_APP_BACKEND_PORT }}
+        
     steps:
       # Step 1: Checkout the code from the repository
       - name: Checkout Code
@@ -42,7 +48,7 @@ jobs:
         run: |
             echo "Waiting for backend to start..."
             sleep 60  # Adjust time if backend takes longer to start
-            curl -f http://localhost:3000/api-docs || exit 1
+            curl -f http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs || exit 1
         shell: bash     
       
       # Step 8: Start the frontend server

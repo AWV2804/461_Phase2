@@ -104,7 +104,6 @@ function isNpmUrl(url: string): boolean {
     return url.includes('npmjs.com');
 }
 
-// Main function to calculate the ramp-up score based on URL type
 /**
  * Calculates the ramp-up score for a given repository or package URL.
  * 
@@ -119,7 +118,7 @@ function isNpmUrl(url: string): boolean {
  * If an unsupported URL type is provided, the function logs an error and returns a score of 0.
  * In case of any errors during the process, the function catches the error, logs it, and returns a score of 0.
  */
-export async function calculateRampUpScore(url: string | URL, repoPath: string): Promise<number> {
+export async function calculateRampUpScore(url: string | URL, repoPath): Promise<number> {
     //const repoPath = path.resolve(process.cwd(), 'repo'); // The repo will be cloned in the current directory
 
     try {
@@ -169,11 +168,15 @@ export async function calculateRampUpScore(url: string | URL, repoPath: string):
             return 0;
         }
 
+        if (rampUpScore < 0 || rampUpScore > 1) {
+            rampUpScore = 0.1;
+        }
+
         // Clean up after analysis
         //await deleteDirectory(repoPath);
         //console.log(`Repository directory cleaned up: ${repoPath}`);
 
-        return Math.min(1,rampUpScore);
+        return rampUpScore;
     } catch (error) {
         console.error('Error in ramp-up score calculation:', error);
         return 0; // Return 0 in case of error

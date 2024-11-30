@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 
 const s3 = new S3Client({ region: 'us-east-1' });
@@ -58,6 +58,21 @@ export async function uploadContentToS3(content: string, hashKey: string): Promi
        console.error('Error uploading content to S3:', error);
        throw error; // Re-throw the error for upstream handling
    }
+}
+
+export async function removeContentFromS3(hashKey: string): Promise<void> {
+    const deleteObjectParams = {
+        Bucket: BUCKET_NAME,
+        Key: hashKey
+    };
+
+    try {
+        await s3.send(new DeleteObjectCommand(deleteObjectParams));
+        console.log(`Successfully removed content from S3 with key: ${hashKey}`);
+    } catch (error) {
+        console.error('Error removing content from S3:', error);
+        throw error; // Re-throw the error for upstream handling
+    }
 }
 
 export { s3, BUCKET_NAME, streamToBuffer };

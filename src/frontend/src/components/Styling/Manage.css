@@ -1,0 +1,77 @@
+/* src/frontend/src/components/Styling/Manage.css */
+
+.manage-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+
+.manage-form {
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+    background-color: #fff;
+    padding: 20px 40px 20px 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.form-group input[type="text"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.delete-button {
+    padding: 10px 20px;
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.delete-button:hover {
+    background-color: #c9302c;
+}
+
+.error-message {
+    color: red;
+    margin-top: 10px;
+}
+
+.result-container {
+    margin-top: 20px;
+    width: 100%;
+}
+
+.result-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.result-container th,
+.result-container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.result-container th {
+    background-color: #f2f2f2;
+}
