@@ -1,6 +1,6 @@
 // src/frontend/src/components/Reset.tsx
 import React, { useContext } from 'react';
-import { AuthContext } from '../AuthContext';
+import { AuthContext } from '../AuthContext.js';
 import './Styling/Reset.css';
 
 const Reset: React.FC = () => {

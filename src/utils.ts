@@ -5,7 +5,7 @@ import { dirname } from 'path';
 import path from 'path';
 import AdmZip from 'adm-zip';
 import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/node';
+import http from 'isomorphic-git/http/node/index.cjs';
 import fs from 'fs';
 import logger from './logging.js';
 import axios from 'axios';

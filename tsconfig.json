@@ -125,7 +125,7 @@
       "jsx": "react-jsx"
 
   },
-    "include": ["src/**/*.ts", "src/frontend/src/App.tsx"],
+    "include": ["src/**/*.ts", "src/frontend/src/App.tsx", "src/**/index.tsx"],
     "exclude": ["node_modules"],
 }
   

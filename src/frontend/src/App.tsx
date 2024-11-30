@@ -1,17 +1,17 @@
 // src/frontend/src/App.tsx
 import React, { useContext } from 'react';
 import { Route, Routes, Link } from 'react-router-dom';
-import Upload from './components/Upload';
-import Login from './components/Login';
-import Home from './components/Home';
-import CreateAccount from './components/CreateAccount';
-import Search from './components/Search';
-import Update from './components/Update';
-import Cost from './components/Cost';
-import Reset from './components/Reset';
+import Upload from './components/Upload.js';
+import Login from './components/Login.js';
+import Home from './components/Home.js';
+import CreateAccount from './components/CreateAccount.js';
+import Search from './components/Search.js';
+import Update from './components/Update.js';
+import Cost from './components/Cost.js';
+import Reset from './components/Reset.js';
 import './components/Styling/App.css'; // Import the CSS file for styling
-import { AuthContext } from './AuthContext';
-import ProtectedRoute from './components/ProtectedRoute'; // Import ProtectedRoute
+import { AuthContext } from './AuthContext.js';
+import ProtectedRoute from './components/ProtectedRoute.js'; // Import ProtectedRoute
 
 const App: React.FC = () => {
     const { isLoggedIn, isAdmin, username, logout } = useContext(AuthContext); // Use AuthContext

@@ -2,8 +2,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter as Router } from 'react-router-dom';
-import App from './frontend/src/App';
-import { AuthProvider } from './frontend/src/AuthContext'; // Import AuthProvider
+import App from './frontend/src/App.js';
+import { AuthProvider } from './frontend/src/AuthContext.js'; // Import AuthProvider
 
 ReactDOM.render(
     <React.StrictMode>

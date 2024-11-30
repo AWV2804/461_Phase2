@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - integration/1.0  # Trigger on push to the main branch
+      - integration/1.0  # Trigger on push to the integration/1.0 branch
 
 jobs:
   deploy:
@@ -12,34 +12,88 @@ jobs:
     env:
       LOG_LEVEL: 1                  # Set log level to 0
       LOG_FILE: "./logfile.txt"      # Define log file path
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+      GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      PORT: 8080
+      REACT_APP_BACKEND_PORT: 8081
+      EC2_IP_ADDRESS: ${{ secrets.EC2_IP_ADDRESS }}
+      USER: "askannan2"
+      PASSWORD: "v5fStlVVtNA5cQdP"
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Archive build folder
+      run: |
+        find src -name '*.js' -exec cp --parents \{\} build/ \;
+        cp -r src/frontend/src/components/Styling build/src/frontend/src/components/
+        cp -r node_modules build/
+        cp package.json package-lock.json build/
+        tar -czvf build.tar.gz build
 
     - name: Deploy application to EC2
       run: |
         echo "${{ secrets.AWS_PEM_KEY }}" > new_aws_access.pem  # Write the PEM key from the secret to a file
         chmod 600 new_aws_access.pem  # Secure the key file
+        scp -o StrictHostKeyChecking=no -i new_aws_access.pem build.tar.gz ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP_ADDRESS }}:/home/${{ secrets.EC2_USER }}/build.tar.gz
         ssh -o StrictHostKeyChecking=no -i new_aws_access.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP_ADDRESS }} << 'EOF'
-        if [ ! -d "461_Phase2" ]; then
-          git clone https://github.com/AWV2804/461_Phase2.git
+        # Remove existing repository if it exists
+        if [ -d "build" ]; then
+          echo "Removing existing repository..."
+          rm -rf build
         fi
-        pwd
-        cd 461_Phase2
-        echo "Switching to the integration branch"
-        git checkout integration/1.0
-        chmod +x deploy.sh
+        tar -xzf /home/${{ secrets.EC2_USER}}/build.tar.gz -C /home/${{ secrets.EC2_USER }}/  # Extract the build folder
+
+        # Set environment variables
         export LOG_LEVEL=${{ env.LOG_LEVEL }}      # Set log level on EC2
         export LOG_FILE=${{ env.LOG_FILE }}        # Set log file path on EC2
         export GITHUB_TOKEN=${{ env.GITHUB_TOKEN }}  # Set GitHub token on EC2
-        echo $LOG_LEVEL
-        echo $LOG_FILE
-        echo $GITHUB_TOKEN
-        git pull origin integration/1.0
-        # Log the deployment process
-        echo "Deployment started at $(date)" >> $LOG_FILE
-        ./deploy.sh >> $LOG_FILE 2>&1  # Redirect output to the log file
-        echo "Deployment finished at $(date)" >> $LOG_FILE
+        export PORT=${{ env.PORT }}                # Set port on EC2
+        export REACT_APP_BACKEND_PORT=${{ env.REACT_APP_BACKEND_PORT }}  # Set backend port on EC2
+        export EC2_IP_ADDRESS=${{ env.EC2_IP_ADDRESS }}  # Set EC2 IP address on EC2
+        export USER=${{ env.USER }}                # Set user on EC2
+        export PASSWORD=${{ env.PASSWORD }}        # Set password on EC2
+        # Run the deployment script
+        echo "Running deployment script..."
+        cd /home/${{ secrets.EC2_USER }}/build
+        PID_8080=$(lsof -t -i:8080)
+        if [ -n "$PID_8080" ]; then
+          echo "Killing process $PID_8080 on port 8080..."
+          kill -9 $PID_8080
+          if [ $? -eq 0 ]; then
+            echo "Successfully killed process $PID_8080 on port 8080."
+          else
+            echo "Failed to kill process $PID_8080 on port 8080."
+          fi
+        else
+          echo "No process found on port 8080."
+        fi
+
+        # Check port 8081
+        PID_8081=$(lsof -t -i:8081)
+        if [ -n "$PID_8081" ]; then
+          echo "Killing process $PID_8081 on port 8081..."
+          kill -9 $PID_8081
+          if [ $? -eq 0 ]; then
+            echo "Successfully killed process $PID_8081 on port 8081."
+          else
+            echo "Failed to kill process $PID_8081 on port 8081."
+          fi
+        else
+          echo "No process found on port 8081."
+        fi
+        echo "Starting backend server in the background..." >> $LOG_FILE
+        mkdir public
+        mv index.html public/index.html
+        nohup npm run start:dev > $LOG_FILE 2>&1 &
         EOF

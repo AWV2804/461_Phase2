@@ -1,6 +1,6 @@
 // src/frontend/src/components/CreateAccount.tsx
 import React, { useState } from 'react';
-import SHA256 from 'crypto-js/sha256';
+import SHA256 from 'crypto-js/sha256.js';
 import './Styling/Login.css';
 import { useNavigate } from 'react-router-dom';
 

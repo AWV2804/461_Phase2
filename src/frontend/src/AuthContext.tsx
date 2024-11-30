@@ -1,6 +1,6 @@
 // src/frontend/src/AuthContext.tsx
 import React, { createContext, useState, ReactNode } from 'react';
-import SHA256 from 'crypto-js/sha256';
+import SHA256 from 'crypto-js/sha256.js';
 
 interface AuthContextType {
   isLoggedIn: boolean;

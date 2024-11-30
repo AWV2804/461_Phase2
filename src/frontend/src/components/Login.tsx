@@ -1,9 +1,9 @@
 // src/frontend/src/components/Login.tsx
 import React, { useState, useContext } from 'react';
-import SHA256 from 'crypto-js/sha256';
+import SHA256 from 'crypto-js/sha256.js';
 import { useNavigate } from 'react-router-dom';
 import './Styling//Login.css';
-import { AuthContext } from '../AuthContext'; // Import AuthContext
+import { AuthContext } from '../AuthContext.js'; // Import AuthContext
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
