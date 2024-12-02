@@ -32,8 +32,9 @@ beforeEach(() => {
     const mockCommits: any[] = [];
     const mockUrl: string = 'https://github.com/example/repo';
     const tempDir: string = '/tmp/example';
+    const mockClosedIssues: any[] = [];
 
-    manager = new metric_manager(mockData, mockContributors, mockIssues, mockPullRequests, mockCommits, mockUrl, tempDir);
+    manager = new metric_manager(mockData, mockContributors, mockIssues, mockPullRequests, mockCommits, mockUrl, tempDir, mockClosedIssues);
 });
 
 test('Calculates metrics in parallel', async () => {
