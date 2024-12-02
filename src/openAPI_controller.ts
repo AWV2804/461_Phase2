@@ -25,10 +25,6 @@
  * 
  * @constant {string[]} possibleReadmeFiles - List of possible README file names.
  * @constant {string} monkeyBusiness - A hardcoded bearer token for authentication.
- * @constant {object} packageDB - MongoDB connection for the Packages collection.
- * @constant {object} userDB - MongoDB connection for the Users collection.
- * @constant {object} Package - Mongoose model for the Package schema.
- * @constant {object} UserModel - Mongoose model for the User schema.
  * @constant {object} app - Express application instance.
  * @constant {number} FRONTEND_PORT - Port number for the frontend connection.
  * @constant {number} BACKEND_PORT - Port number for the backend server.
@@ -66,8 +62,6 @@ import path from 'path';
 import * as s3 from './s3_utils.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { verify } from 'crypto';
-import esbuild from 'esbuild';
 
 // For TypeScript, you might need to cast to string
 const __filename = fileURLToPath(import.meta.url);
@@ -83,13 +77,26 @@ const possibleReadmeFiles = [
 
 const monkeyBusiness = '\"bearer 66abf860f10edcdd512e9f3f9fdc8af1bdc676503922312f8323f5090ef09a6a\"'
 
-const packageDB = db.connectToMongoDB("Packages");
-const userDB = db.connectToMongoDB("Users");
-
-// console.log(packageDB);
-const Package = packageDB[1].model('Package', db.packageSchema);
-const UserModel = userDB[1].model('User', db.userSchema);
+// const packageDB = db.connectToMongoDB("Packages");
+// const userDB = db.connectToMongoDB("Users");
+// const Package = packageDB[1].model('Package', db.packageSchema);
+// const UserModel = userDB[1].model('User', db.userSchema);
 export const app = express();
+let packageDB;
+let userDB;
+let Package;
+let UserModel;
+function initializeDatabases() {
+  if (!packageDB) {
+    console.log('Initializing packageDB...');
+    packageDB = db.connectToMongoDB("Packages");
+  }
+  if (!userDB) {
+    console.log('Initializing userDB...');
+    userDB = db.connectToMongoDB("Users");
+  }
+}
+
 // app.use(express.json()); // parse incoming requests with JSON payloads
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
@@ -137,80 +144,32 @@ const swaggerOptions = {
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use((req, res, next) => {
+    initializeDatabases(); // Ensure the databases are initialized
+    Package = packageDB[1].model('Package', db.packageSchema);
+    UserModel = userDB[1].model('User', db.userSchema);
+    next();
+  });
 
-/**
- * @swagger
- * openapi: 3.0.0
-info:
-  title: Database Reset API
-  version: 1.0.0
-paths:
-  /reset:
-    delete:
-      summary: Resets the database
-      description: Deletes the database and all user records except for a specific user model. Only accessible by administrators with a valid authentication token.
-      tags:
-        - Admin
-      parameters:
-        - in: header
-          name: X-Authorization
-          required: true
-          schema:
-            type: string
-          description: The authentication token for authorization. Must belong to an administrator.
-      responses:
-        '200':
-          description: Database deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Registry is reset."
-        '403':
-          description: Authorization error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    examples:
-                      missingHeader:
-                        value: "Missing Authentication Header"
-                      invalidToken:
-                        value: "Invalid or expired token: [token error details]"
-                      insufficientPermissions:
-                        value: "You do not have the correct permissions to reset the registry."
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Error deleting database"
-
- */
 app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null) {
+    if(authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
-    if(updatedToken instanceof Error) {
-        logger.error('Invalid or expired token');
-        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
-    }
-    if(isAdmin != true) {
-        logger.error('You do not have the correct permissions to reset the registry.');
-        return res.status(403).send('You do not have the correct permissions to reset the registry.')
+    try {
+        const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+        if(updatedToken instanceof Error) {
+            logger.error('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+        }
+        if(isAdmin != true) {
+            logger.error('You do not have the correct permissions to reset the registry.');
+            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+        }
+    } catch (error) {
+        logger.error('Error verifying token:', error);
+        return res.status(403).send('Invalid or expired token');
     }
     try {
         const result = await db.deleteDB(packageDB[1]);
@@ -225,8 +184,6 @@ app.delete('/reset', async (req, res) => {
             logger.error('Error deleting user:', result2[1]);
             return res.status(500).send('Error deleting user');
         }
-        
-        
     } catch (error) {
         logger.error('Error deleting database:', error);
         res.status(500).send('Error deleting database');
@@ -235,14 +192,24 @@ app.delete('/reset', async (req, res) => {
 
 app.post('/package/byRegEx', async (req, res) => {
     // Auth heaader stuff
-    const authToken = req.headers['X-Authorization'] || req.headers['x-authorization'];
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(authToken == '' || authToken == null) {
         logger.error('Authentication failed due to invalid or missing AuthenticationToken');
         return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
     }
-    if (authToken != monkeyBusiness) {
-        logger.error('Authentication failed due to insufficient permissions');
-        return res.status(403).send('Authentication failed due to insufficient permissions');
+    try {
+        const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+        if(updatedToken instanceof Error) {
+            logger.error('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+        }
+        if(isAdmin != true) {
+            logger.error('You do not have the correct permissions to reset the registry.');
+            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+        }
+    } catch (error) {
+        logger.error('Error verifying token:', error);
+        return res.status(403).send('Invalid or expired token');
     }
     const { RegEx } = req.body;
     if (!RegEx) {
@@ -264,6 +231,29 @@ app.post('/package/byRegEx', async (req, res) => {
     return res.status(200).json(formattedPackages);
 });
 
+app.get('/package//rate', async (req, res) => {
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
+    if(authToken == '' || authToken == null || authToken.trim() == '') {
+        logger.error('Missing Authentication Header');
+        return res.status(403).send('Missing Authentication Header');
+    }
+    try {
+        const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+        if(updatedToken instanceof Error) {
+            logger.error('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+        }
+        if(isAdmin != true) {
+            logger.error('You do not have the correct permissions to reset the registry.');
+            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+        }
+    } catch (error) {
+        logger.error('Error verifying token:', error);
+        return res.status(403).send('Invalid or expired token');
+    }
+    
+    return res.status(400).send('Missing package ID');
+});
 /**
  * @swagger
  * /rate/{url}:
@@ -288,16 +278,27 @@ app.post('/package/byRegEx', async (req, res) => {
  *                  description: Error rating package
  */
 app.get('/package/:id/rate', async (req, res) => {
-    const authToken = req.headers['X-Authorization'] || req.headers['x-authorization'];
-    if(authToken == '' || authToken == null) {
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
+    if(authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    if (authToken != monkeyBusiness) {
-        logger.error('You do not have the correct permissions to delete the database.');
-        return res.status(403).send('You do not have the correct permissions to delete the database.');
+    try {
+        const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+        if(updatedToken instanceof Error) {
+            logger.error('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+        }
+        if(isAdmin != true) {
+            logger.error('You do not have the correct permissions to reset the registry.');
+            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+        }
+    } catch (error) {
+        logger.error('Error verifying token:', error);
+        return res.status(403).send('Invalid or expired token');
     }
     const packageId = req.params.id;
+    console.log(packageId);
     if(packageId.trim() === '' || packageId == null || packageId == undefined || !packageId) {
         logger.error('Missing package ID');
         return res.status(400).send('Missing package ID');
@@ -309,12 +310,6 @@ app.get('/package/:id/rate', async (req, res) => {
         return res.status(500).send(`Error retrieving package: ${packageInfo[1]}`);
     }
     const pkg = packageInfo[1] as any[];
-    // const pkg = await db.getPackagesByNameOrHash(packageId, Package);
-    // if(pkg[0] == false) {
-    //     logger.error('Package not found');
-    //     return res.status(404).send('Package not found');
-    // }
-    console.log(pkg);
     const scoreObject = JSON.parse(pkg[0]["score"]);
     const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
     if(nullFields.length > 0) {
@@ -342,50 +337,50 @@ app.get('/package/:id/rate', async (req, res) => {
     return res.status(200).send(jsonResponse);
 });
 
-app.get('/package/:id?', async (req, res) => {
-    try {
-        const token = req.headers['X-Authorization'] || req.headers['x-authorization']
-        if (token == '' || token == null) { 
-            logger.info('Authentication failed due to invalid or missing AuthenticationToken');
-            return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
-        } else if (token != monkeyBusiness) {
-            logger.info(`Authentication failed due to insufficient permissions`);
-            return res.status(403).send(`Authentication failed due to insufficient permissions`);
-        }
-        const packageID = req.params.id;
-        if (!packageID || typeof packageID !== 'string' || packageID.trim() === '') {
-            logger.info('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
-            return res.status(400).send('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
-        }
+// app.get('/package/:id?', async (req, res) => {
+//     try {
+//         const token = req.headers['X-Authorization'] || req.headers['x-authorization']
+//         if (token == '' || token == null) { 
+//             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
+//             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
+//         } else if (token != monkeyBusiness) {
+//             logger.info(`Authentication failed due to insufficient permissions`);
+//             return res.status(403).send(`Authentication failed due to insufficient permissions`);
+//         }
+//         const packageID = req.params.id;
+//         if (!packageID || typeof packageID !== 'string' || packageID.trim() === '') {
+//             logger.info('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
+//             return res.status(400).send('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
+//         }
         
-        const packageInfo = await db.getPackagesByNameOrHash(packageID, Package);
-        if (!packageInfo[0] && packageInfo[1][0] == -1) {
-            return res.status(404).send('Package not found: ' + packageInfo[1]);
-        } else if(!packageInfo[0]) {
-            return res.status(500).send(`Error retrieving package: ${packageInfo[1]}`);
-        }
-        const packInfo = packageInfo[1] as any[];
-        const packageContentBuffer = await s3.requestContentFromS3(packageID);
-        const packageContent = packageContentBuffer.toString('base64');
-        logger.info('Successfully retrieved package content and info');
-        const jsonResponse = {
-            metadata: {
-              Name: packInfo[0].name,
-              Version: packInfo[0].version,
-              ID: packageID,
-            },
-            data: {
-              Content: packageContent,
-              JSProgram: packInfo[0].jsProgram || '',
-            },
-        };
-        return res.status(200).send(jsonResponse);
+//         const packageInfo = await db.getPackagesByNameOrHash(packageID, Package);
+//         if (!packageInfo[0] && packageInfo[1][0] == -1) {
+//             return res.status(404).send('Package not found: ' + packageInfo[1]);
+//         } else if(!packageInfo[0]) {
+//             return res.status(500).send(`Error retrieving package: ${packageInfo[1]}`);
+//         }
+//         const packInfo = packageInfo[1] as any[];
+//         const packageContentBuffer = await s3.requestContentFromS3(packageID);
+//         const packageContent = packageContentBuffer.toString('base64');
+//         logger.info('Successfully retrieved package content and info');
+//         const jsonResponse = {
+//             metadata: {
+//               Name: packInfo[0].name,
+//               Version: packInfo[0].version,
+//               ID: packageID,
+//             },
+//             data: {
+//               Content: packageContent,
+//               JSProgram: packInfo[0].jsProgram || '',
+//             },
+//         };
+//         return res.status(200).send(jsonResponse);
 
-    } catch (error) {
-        logger.error(error);
-        return res.status(500).json({ error: `Bad Request` });
-    }
-});
+//     } catch (error) {
+//         logger.error(error);
+//         return res.status(500).json({ error: `Bad Request` });
+//     }
+// });
 
 app.post('/package/:id?', async (req, res) => { // change return body? right now not returning the new package info
     try {
@@ -597,6 +592,57 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
         }
     }  catch (error) {
         console.log("Here");
+        logger.error(error);
+        return res.status(400).json({ error: 'Bad Request' });
+    }
+});
+
+app.get('/package/:id?', async (req, res) => {
+    try {
+        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
+        if (token == '' || token == null) { 
+            logger.info('Authentication failed due to invalid or missing AuthenticationToken');
+            return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
+        } 
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        if (updatedToken instanceof Error) {
+            logger.info('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+        }
+
+        const packageID = req.params.id;
+        if (!packageID || typeof packageID !== 'string' || packageID.trim() === '') {
+            logger.info('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
+            return res.status(400).send('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
+        }
+        const packageInfo = await db.getPackagesByNameOrHash(packageID, Package);
+        if (!packageInfo[0] && packageInfo[1][0] == -1) {
+            return res.status(404).send('Package not found: ' + packageInfo[1]);
+        } else if(!packageInfo[0]) {
+            return res.status(500).send('Error fetching package: ' + packageInfo[1]);
+        }
+        if(packageInfo[1]["secret"] && packageInfo[1]["userGroup"] != userGroup) {
+            logger.error("No access: Wrong user group");
+            return res.status(403).send("No access: Wrong user group"); 
+        }
+        const packInfo = packageInfo[1] as any[];
+        const packageContentBuffer = await s3.requestContentFromS3(packageID);
+        const packageContent = packageContentBuffer.toString('base64');
+        const jsonResponse = {
+            metadata: {
+                Name: packInfo[0].name,
+                Version: packInfo[0].version,
+                ID: packageID,
+            },
+            data: {
+                Content: packageContent,
+                JSProgram: packInfo[0].jsProgram || '',
+            },
+        };
+        logger.info('Successfully retrieved package content and info');
+        return res.status(200).send(jsonResponse);
+
+    } catch (error) {
         logger.error(error);
         return res.status(400).json({ error: 'Bad Request' });
     }
@@ -1039,145 +1085,145 @@ app.post('/package', async (req, res) => {
     
 });
 
-/**
- * @swagger
- * /package/{id}/rate:
- *   get:
- *     summary: Retrieve the rating details for a specific package
- *     tags:
- *       - Packages
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         description: ID of the package to retrieve the rating for
- *         schema:
- *           type: string
- *       - name: X-Authorization
- *         in: header
- *         required: true
- *         description: Authentication token
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Successfully retrieved package rating
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 BusFactor:
- *                   type: number
- *                   description: Bus factor score
- *                 BusFactorLatency:
- *                   type: number
- *                   description: Latency for calculating bus factor
- *                 Correctnesss:
- *                   type: number
- *                   description: Correctness score
- *                 CorrectnessLatency:
- *                   type: number
- *                   description: Latency for correctness calculation
- *                 RampUp:
- *                   type: number
- *                   description: Ramp-up time score
- *                 RampUpLatency:
- *                   type: number
- *                   description: Latency for ramp-up time calculation
- *                 ResponsiveMaintainer:
- *                   type: number
- *                   description: Responsive maintainer score
- *                 ResponsiveMaintainerLatency:
- *                   type: number
- *                   description: Latency for responsive maintainer calculation
- *                 LicenseScore:
- *                   type: number
- *                   description: License score
- *                 LicenseScoreLatency:
- *                   type: number
- *                   description: Latency for license score calculation
- *                 GoodPinningPractice:
- *                   type: number
- *                   description: Good pinning practice score
- *                 GoodPinningPracticeLatency:
- *                   type: number
- *                   description: Latency for good pinning practice calculation
- *                 PullRequest:
- *                   type: number
- *                   description: Pull request score
- *                 PullRequestLatency:
- *                   type: number
- *                   description: Latency for pull request score calculation
- *                 NetScore:
- *                   type: number
- *                   description: Overall net score
- *                 NetScoreLatency:
- *                   type: number
- *                   description: Latency for net score calculation
- *       400:
- *         description: Missing package ID
- *       403:
- *         description: Missing or invalid authentication, or wrong user group access
- *       404:
- *         description: Package not found
- *       500:
- *         description: Package rating calculation failed
- */
-app.get('/package/:id/rate', async (req, res) => {
-    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null) {
-        logger.error('Missing Authentication Header');
-        return res.status(403).send('Missing Authentication Header');
-    }
-    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
-    if(updatedToken instanceof Error) {
-        logger.error('Invalid or expired token');
-        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
-    }
+// /**
+//  * @swagger
+//  * /package/{id}/rate:
+//  *   get:
+//  *     summary: Retrieve the rating details for a specific package
+//  *     tags:
+//  *       - Packages
+//  *     security:
+//  *       - BearerAuth: []
+//  *     parameters:
+//  *       - name: id
+//  *         in: path
+//  *         required: true
+//  *         description: ID of the package to retrieve the rating for
+//  *         schema:
+//  *           type: string
+//  *       - name: X-Authorization
+//  *         in: header
+//  *         required: true
+//  *         description: Authentication token
+//  *         schema:
+//  *           type: string
+//  *     responses:
+//  *       200:
+//  *         description: Successfully retrieved package rating
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 BusFactor:
+//  *                   type: number
+//  *                   description: Bus factor score
+//  *                 BusFactorLatency:
+//  *                   type: number
+//  *                   description: Latency for calculating bus factor
+//  *                 Correctnesss:
+//  *                   type: number
+//  *                   description: Correctness score
+//  *                 CorrectnessLatency:
+//  *                   type: number
+//  *                   description: Latency for correctness calculation
+//  *                 RampUp:
+//  *                   type: number
+//  *                   description: Ramp-up time score
+//  *                 RampUpLatency:
+//  *                   type: number
+//  *                   description: Latency for ramp-up time calculation
+//  *                 ResponsiveMaintainer:
+//  *                   type: number
+//  *                   description: Responsive maintainer score
+//  *                 ResponsiveMaintainerLatency:
+//  *                   type: number
+//  *                   description: Latency for responsive maintainer calculation
+//  *                 LicenseScore:
+//  *                   type: number
+//  *                   description: License score
+//  *                 LicenseScoreLatency:
+//  *                   type: number
+//  *                   description: Latency for license score calculation
+//  *                 GoodPinningPractice:
+//  *                   type: number
+//  *                   description: Good pinning practice score
+//  *                 GoodPinningPracticeLatency:
+//  *                   type: number
+//  *                   description: Latency for good pinning practice calculation
+//  *                 PullRequest:
+//  *                   type: number
+//  *                   description: Pull request score
+//  *                 PullRequestLatency:
+//  *                   type: number
+//  *                   description: Latency for pull request score calculation
+//  *                 NetScore:
+//  *                   type: number
+//  *                   description: Overall net score
+//  *                 NetScoreLatency:
+//  *                   type: number
+//  *                   description: Latency for net score calculation
+//  *       400:
+//  *         description: Missing package ID
+//  *       403:
+//  *         description: Missing or invalid authentication, or wrong user group access
+//  *       404:
+//  *         description: Package not found
+//  *       500:
+//  *         description: Package rating calculation failed
+//  */
+// app.get('/package/:id/rate', async (req, res) => {
+//     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
+//     if(authToken == '' || authToken == null) {
+//         logger.error('Missing Authentication Header');
+//         return res.status(403).send('Missing Authentication Header');
+//     }
+//     const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+//     if(updatedToken instanceof Error) {
+//         logger.error('Invalid or expired token');
+//         return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+//     }
     
-    const packageId = req.params.id;
-    if(packageId == '' || packageId == null) {
-        logger.error('Missing package ID');
-        return res.status(400).send('Missing package ID');
-    }
-    const pkg = await db.getPackagesByNameOrHash(packageId, Package);
-    if(pkg[0] == false) {
-        logger.error('Package not found');
-        return res.status(404).send('Package not found');
-    }
-    if(pkg[1]["secret"] && pkg[1]["userGroup"] != userGroup) {
-        logger.error("No access: Wrong user group");
-        return res.status(403).send("No access: Wrong user group");
-    }
-    const scoreObject = JSON.parse(pkg[1]["score"]);
-    const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
-    if(nullFields.length > 0) {
-        logger.error('Package rating choked');
-        return res.status(500).send('Package rating choked');
-    }
-    const jsonResponse = {
-        BusFactor: scoreObject["BusFactor"],
-        BusFactorLatency: scoreObject["BusFactorLatency"],
-        Correctnesss: scoreObject["Correctness"],
-        CorrectnessLatency: scoreObject["Correctness_Latency"],
-        RampUp: scoreObject["RampUp"],
-        RampUpLatency: scoreObject["RampUp_Latency"],
-        ResponsiveMaintainer: scoreObject["ResponsiveMaintainer"],
-        ResponsiveMaintainerLatency: scoreObject["ResponsiveMaintainer_Latency"],
-        LicenseScore: scoreObject["License"],
-        LicenseScoreLatency: scoreObject["License_Latency"],
-        GoodPinningPractice: scoreObject["GoodPinningPractice"],
-        GoodPinningPracticeLatency: scoreObject["GoodPinningPractice_Latency"],
-        PullRequest: scoreObject["PullRequest"],
-        PullRequestLatency: scoreObject["PullRequest_Latency"],
-        NetScore: scoreObject["NetScore"],
-        NetScoreLatency: scoreObject["NetScore_Latency"],
-    };
-    return res.status(200).send(jsonResponse);
-});
+//     const packageId = req.params.id;
+//     if(packageId == '' || packageId == null) {
+//         logger.error('Missing package ID');
+//         return res.status(400).send('Missing package ID');
+//     }
+//     const pkg = await db.getPackagesByNameOrHash(packageId, Package);
+//     if(pkg[0] == false) {
+//         logger.error('Package not found');
+//         return res.status(404).send('Package not found');
+//     }
+//     if(pkg[1]["secret"] && pkg[1]["userGroup"] != userGroup) {
+//         logger.error("No access: Wrong user group");
+//         return res.status(403).send("No access: Wrong user group");
+//     }
+//     const scoreObject = JSON.parse(pkg[1]["score"]);
+//     const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
+//     if(nullFields.length > 0) {
+//         logger.error('Package rating choked');
+//         return res.status(500).send('Package rating choked');
+//     }
+//     const jsonResponse = {
+//         BusFactor: scoreObject["BusFactor"],
+//         BusFactorLatency: scoreObject["BusFactorLatency"],
+//         Correctnesss: scoreObject["Correctness"],
+//         CorrectnessLatency: scoreObject["Correctness_Latency"],
+//         RampUp: scoreObject["RampUp"],
+//         RampUpLatency: scoreObject["RampUp_Latency"],
+//         ResponsiveMaintainer: scoreObject["ResponsiveMaintainer"],
+//         ResponsiveMaintainerLatency: scoreObject["ResponsiveMaintainer_Latency"],
+//         LicenseScore: scoreObject["License"],
+//         LicenseScoreLatency: scoreObject["License_Latency"],
+//         GoodPinningPractice: scoreObject["GoodPinningPractice"],
+//         GoodPinningPracticeLatency: scoreObject["GoodPinningPractice_Latency"],
+//         PullRequest: scoreObject["PullRequest"],
+//         PullRequestLatency: scoreObject["PullRequest_Latency"],
+//         NetScore: scoreObject["NetScore"],
+//         NetScoreLatency: scoreObject["NetScore_Latency"],
+//     };
+//     return res.status(200).send(jsonResponse);
+// });
 
 app.put('/authenticate', async (req, res) => {
     try {
@@ -1213,44 +1259,6 @@ app.put('/authenticate', async (req, res) => {
         console.error(error);
         return res.status(500).json({ error: 'Bad Request' });
       }
-});
-
-
-app.get('/package/:id', async (req, res) => {
-    try {
-        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if (token == '' || token == null) { 
-            logger.info('Authentication failed due to invalid or missing AuthenticationToken');
-            return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
-        } 
-        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
-        if (updatedToken instanceof Error) {
-            logger.info('Invalid or expired token');
-            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
-        }
-
-        const packageID = req.params.id;
-        if (!packageID || typeof packageID !== 'string') {
-            logger.info('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
-            return res.status(400).send('There is missing field(s) in the PackageID or it is iformed improperly, or it is invalid.');
-        }
-        const packageInfo = await db.getPackagesByNameOrHash(packageID, Package);
-        if (!packageInfo[0]) {
-            return res.status(404).send('Package not found: ' + packageInfo[1]);
-        }
-        if(packageInfo[1]["secret"] && packageInfo[1]["userGroup"] != userGroup) {
-            logger.error("No access: Wrong user group");
-            return res.status(403).send("No access: Wrong user group"); 
-        }
-        const packageContent = s3.requestContentFromS3(packageID);
-
-        logger.info('Successfully retrieved package content and info');
-        return res.status(200).json({ package: packageContent, info: packageInfo[1] });
-
-    } catch (error) {
-        logger.error(error);
-        return res.status(400).json({ error: 'Bad Request' });
-    }
 });
 
 app.post('/package/:id', async (req, res) => { // change return body? right now not returning the new package info
@@ -1554,45 +1562,6 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
         logger.error(error);
         return res.status(400).json({ error: 'Bad Request' });
     }
-});
-
-app.post('/package/byRegEx', async (req, res) => {
-    // Auth heaader stuff
-    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
-    if(updatedToken instanceof Error) {
-        logger.error('Invalid or expired token');
-        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
-    }
-    // if(isAdmin != true) {
-    //     logger.error('You do not have the correct permissions to upload to the database.');
-    //     return res.status(403).send('You do not have the correct permissions to upload to the database.')
-    // }
-    const { RegEx } = req.body;
-    if (!RegEx) {
-        return res.status(400).json({ error: 'Malformed Request' });
-    }
-    const [success, packages] = await db.findPackageByRegEx(RegEx, Package);
-    if (!success) {
-        return res.status(500).send('Error retrieving packages');
-    }
-    if(packages.length == 0) {
-        logger.info('No packages found');
-        return res.status(404).send('No packages found');
-    }
-    const accessiblePackages = packages.filter(pkg => {
-        if (pkg["secret"] && pkg["userGroup"] != userGroup) {
-            logger.error(`No access to package ${pkg["name"]}: Wrong user group`);
-            return false; // Exclude this package
-        }
-        return true; // Include this package
-    });
-    const formattedPackages = accessiblePackages.map((pkg: any) => ({
-        Version: pkg.version,
-        Name: pkg.name,
-        ID: pkg.packageId, // Use packageId if available, fallback to id
-    }));
-    return res.status(200).json(formattedPackages);
 });
 // === New /package/:id/cost Endpoint ===
 
