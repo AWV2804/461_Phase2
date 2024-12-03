@@ -18,7 +18,7 @@ jobs:
       EC2_IP_ADDRESS: ${{ secrets.EC2_IP_ADDRESS }}
       TEST_USERNAME_ADMIN: ${{ secrets.TEST_USERNAME_ADMIN }}
       TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-      TEST_USERNAME_NOTADMIN: ${{ secrets.TEST_USERENAME_NOTADMIN }}
+      TEST_USERNAME_NOTADMIN: ${{ secrets.TEST_USERNAME_NOTADMIN }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       USER_NAME: ${{ secrets.USER_NAME}}
       PASSWORD: ${{ secrets.PASSWORD }}
