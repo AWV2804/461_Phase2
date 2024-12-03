@@ -104,8 +104,4 @@ jobs:
         mkdir public
         mv index.html public/index.html
         nohup npm run start:dev > $LOG_FILE 2>&1 &
-<<<<<<< HEAD
         EOF
-=======
-        EOF
->>>>>>> ce70845097b9c75b2a4a43aa5fb237556297f009
