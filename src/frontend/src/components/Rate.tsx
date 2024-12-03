@@ -1,6 +1,6 @@
 // src/frontend/src/components/Rate.tsx
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../AuthContext';
+import { AuthContext } from '../AuthContext.js';
 import './Styling/Rate.css';
 
 const Rate: React.FC = () => {

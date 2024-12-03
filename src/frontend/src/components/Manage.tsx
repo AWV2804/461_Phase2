@@ -1,6 +1,6 @@
 // src/frontend/src/components/Manage.tsx
 import React, { useContext, useState } from 'react';
-import { AuthContext } from '../AuthContext';
+import { AuthContext } from '../AuthContext.js';
 import { useNavigate } from 'react-router-dom';
 import './Styling/Manage.css';
 

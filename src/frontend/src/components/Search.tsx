@@ -1,6 +1,6 @@
 // src/frontend/src/components/Search.tsx
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../AuthContext';
+import { AuthContext } from '../AuthContext.js';
 import './Styling/Search.css';
 
 interface Package {

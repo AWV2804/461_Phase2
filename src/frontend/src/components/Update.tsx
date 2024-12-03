@@ -1,6 +1,6 @@
 // src/frontend/src/components/Update.tsx
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../AuthContext';
+import { AuthContext } from '../AuthContext.js';
 import './Styling/Update.css';
 
 const Update: React.FC = () => {

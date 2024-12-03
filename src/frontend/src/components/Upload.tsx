@@ -1,6 +1,6 @@
 // src/frontend/src/components/Upload.tsx
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../AuthContext';
+import { AuthContext } from '../AuthContext.js';
 import './Styling/Upload.css';
 
 const Upload: React.FC = () => {
