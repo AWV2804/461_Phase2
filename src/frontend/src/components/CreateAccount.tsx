@@ -31,7 +31,7 @@ const CreateAccount: React.FC = () => {
 
       const requestBody = {
         username,
-        password: SHA256(password).toString(),
+        password,
         isAdmin,
         ...(addUserGroup && { userGroup }),
       };
@@ -46,7 +46,7 @@ const CreateAccount: React.FC = () => {
 
       const data = await response.json();
 
-      if (response.status === 201) {
+      if (response.status === 200) {
         alert(`Account created successfully for user: ${username} with admin: ${isAdmin}!`);
         // Reset fields
         setUsername('');
