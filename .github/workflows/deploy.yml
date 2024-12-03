@@ -16,8 +16,12 @@ jobs:
       PORT: 8080
       REACT_APP_BACKEND_PORT: 8081
       EC2_IP_ADDRESS: ${{ secrets.EC2_IP_ADDRESS }}
-      USER: "askannan2"
-      PASSWORD: "v5fStlVVtNA5cQdP"
+      TEST_USERNAME_ADMIN: 'athar'
+      TEST_PASSWORD: 'athar'
+      TEST_USERNAME_NOTADMIN: 'athar_notadmin'
+      SECRET_KEY: 'secretkey'
+      USER_NAME: 'askannan2'
+      PASSWORD: 'v5fStlVVtNA5cQdP'
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -61,8 +65,12 @@ jobs:
         export PORT=${{ env.PORT }}                # Set port on EC2
         export REACT_APP_BACKEND_PORT=${{ env.REACT_APP_BACKEND_PORT }}  # Set backend port on EC2
         export EC2_IP_ADDRESS=${{ env.EC2_IP_ADDRESS }}  # Set EC2 IP address on EC2
-        export USER=${{ env.USER }}                # Set user on EC2
-        export PASSWORD=${{ env.PASSWORD }}        # Set password on EC2
+        export TEST_USERNAME_ADMIN=${{ env.TEST_USERNAME_ADMIN }}  # Set admin username on EC2
+        export TEST_PASSWORD=${{ env.TEST_PASSWORD }}  # Set password on EC2
+        export TEST_USERNAME_NOTADMIN=${{ env.TEST_USERNAME_NOTADMIN }}  # Set non-admin username on EC2
+        export SECRET_KEY=${{ env.SECRET_KEY }}      # Set secret key on EC2
+        export USER_NAME=${{ env.USER_NAME }}        # Set username on EC2
+        export PASSWORD=${{ env.PASSWORD }}          # Set password on EC2
         # Run the deployment script
         echo "Running deployment script..."
         cd /home/${{ secrets.EC2_USER }}/build
@@ -96,4 +104,8 @@ jobs:
         mkdir public
         mv index.html public/index.html
         nohup npm run start:dev > $LOG_FILE 2>&1 &
+<<<<<<< HEAD
         EOF
+=======
+        EOF
+>>>>>>> ce70845097b9c75b2a4a43aa5fb237556297f009
