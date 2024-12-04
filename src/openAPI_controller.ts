@@ -62,11 +62,8 @@ import path from 'path';
 import * as s3 from './s3_utils.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-<<<<<<< HEAD
 import { AutoEncryptionLoggerLevel } from 'mongodb';
-=======
 import { connect } from 'http2';
->>>>>>> c94cc40b40fabe3d026289e2d662c520041ff5dd
 
 // For TypeScript, you might need to cast to string
 const __filename = fileURLToPath(import.meta.url);
@@ -162,6 +159,7 @@ app.delete('/reset', async (req, res) => {
         return res.status(403);
     }
     try {
+        logger.info("Verifying token");
         const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
         if(updatedToken instanceof Error) {
             logger.error('Invalid or expired token');
@@ -171,19 +169,19 @@ app.delete('/reset', async (req, res) => {
             logger.error('You do not have the correct permissions to reset the registry.');
             return res.status(403);
         }
+        logger.info('Token verified');
     } catch (error) {
         logger.error('Error verifying token:', error);
         return res.status(403).send('Invalid or expired token');
     }
     try {
-<<<<<<< HEAD
-        
-        const result = await db.deleteDB(packageDB[1]);
-        const result2 = await db.deleteUsersExcept(UserModel);
-=======
+        logger.info('Resetting registry...');
         const numPacks = await packageDB[1].listCollections().toArray();
+        logger.info('Number of packages:', numPacks.length);
         const numUsers = await userDB[1].listConnections().toArray();
+        logger.info('Number of users:', numUsers.length);
         if (numPacks.length == 0 && numUsers.length == 1) {
+            logger.info('Registry is already empty');
             return res.status(200).send('Registry has been reset.');
         }
         let result;
@@ -198,8 +196,7 @@ app.delete('/reset', async (req, res) => {
         } else {
             result2 = [false, 'No collections to delete'];
         }
-
->>>>>>> c94cc40b40fabe3d026289e2d662c520041ff5dd
+        logger.info(`Registry values: ${result}, ${result2}`);
         if (result[0] == true && result2[0] == true) {
             logger.info('Registry is reset.');
             return res.status(200).send('Registry has been reset.');
@@ -1189,12 +1186,8 @@ app.put('/authenticate', async (req, res) => {
           return res.status(401).send('Invalid password');
         }
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
-<<<<<<< HEAD
-        return res.status(200).json({ authToken: authToken });
-=======
         const bearerToken = `bearer ${authToken}`;
         return res.status(200).send(bearerToken);
->>>>>>> c94cc40b40fabe3d026289e2d662c520041ff5dd
       } catch (error) {
         console.error(error);
         return res.status(500).send('Bad Request');
