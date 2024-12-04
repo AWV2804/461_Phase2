@@ -152,7 +152,7 @@ app.use((req, res, next) => {
   });
 
 app.delete('/reset', async (req, res) => {
-    logger.info(req);
+    logger.info(req.headers);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
