@@ -37,8 +37,6 @@ const Login: React.FC = () => {
         },
       });
       const backendUrl = constructBackendUrl('/authenticate');
-      console.log("BackendURL: ", backendUrl);
-      console.log('Request Body:', requestBody); // Log the request body
   
       const response = await fetch(backendUrl, { // Explicitly use the full URL
         method: 'PUT',
@@ -48,16 +46,12 @@ const Login: React.FC = () => {
         },
         body: requestBody,
       });
-  
-      console.log(username, password);
-      
+        
       if (response.status === 200) {
         const data = await response.json();
-        console.log('Authentication successful:', data.authToken);
-        
+
         // Decode the token to extract isAdmin information
         const decodedToken = jwtDecode<DecodedToken>(data.authToken);
-        console.log('Decoded token:', decodedToken);
         const isAdmin = decodedToken.isAdmin;
         const userGroup = decodedToken.userGroup;
         

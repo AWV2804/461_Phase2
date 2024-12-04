@@ -39,7 +39,7 @@ const Manage: React.FC = () => {
       });
       const data = await response.json();
       if (response.status === 200) {
-        alert(data.message || 'Account deleted successfully.');
+        alert(data.message || 'User deleted successfully');
         if (!isAdmin) {
           logout();
           navigate('/login');
