@@ -220,6 +220,7 @@ export function generateToken(isAdmin: boolean, userGroup: string): string {
 
 export function verifyToken(token: string): { updatedToken: string | Error; isAdmin: boolean | null; userGroup: string | null } {
     try {
+        token = token.slice(7);
         const payload = jwt.verify(token, SECRET_KEY) as CustomPayload;
         if(payload.usageCount >= 1000) {
             console.error('Token has expired');
