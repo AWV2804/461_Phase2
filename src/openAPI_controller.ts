@@ -952,7 +952,7 @@ app.post('/package', async (req, res) => {
                         JSProgram: JSProgram || '',
                     },
                 };
-                return res.status(409).send(jsonResponse);
+                return res.status(409).send("Package already exists");
             } else {
                 let version = packageJson.version;
                 if(version == null || version == "") {
