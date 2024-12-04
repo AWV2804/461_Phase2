@@ -287,3 +287,4 @@ export async function createZipFromDir(dir: string) {
     zip.addLocalFolder(dir);
     return zip.toBuffer();
 }
+

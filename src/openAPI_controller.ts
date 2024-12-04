@@ -62,6 +62,7 @@ import path from 'path';
 import * as s3 from './s3_utils.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { connect } from 'http2';
 
 // For TypeScript, you might need to cast to string
 const __filename = fileURLToPath(import.meta.url);
@@ -173,11 +174,27 @@ app.delete('/reset', async (req, res) => {
         return res.status(403).send('Invalid or expired token');
     }
     try {
-        const result = await db.deleteDB(packageDB[1]);
-        const result2 = await db.deleteUsersExcept(UserModel);
+        const numPacks = await packageDB[1].listCollections().toArray();
+        const numUsers = await userDB[1].listConnections().toArray();
+        if (numPacks.length == 0 && numUsers.length == 1) {
+            return res.status(200).send('Registry has been reset.');
+        }
+        let result;
+        let result2;
+        if (numPacks.length != 0) {
+            result = await packageDB[1].dropCollection('Packages');
+        } else {
+            result = [false, 'No collections to delete'];
+        }
+        if (numUsers.length != 1) {
+            result2 = await userDB[1].dropCollection('Users');
+        } else {
+            result2 = [false, 'No collections to delete'];
+        }
+
         if (result[0] == true && result2[0] == true) {
             logger.info('Registry is reset.');
-            return res.status(200);
+            return res.status(200).send('Registry has been reset.');
         } else if(result[0] == false) {
             logger.error('Error deleting database:', result[1]);
             return res.status(500);
