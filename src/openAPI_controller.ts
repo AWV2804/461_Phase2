@@ -152,9 +152,9 @@ app.use((req, res, next) => {
   });
 
 app.delete('/reset', async (req, res) => {
-    logger.info(req.headers);
+    logger.info(req);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403);
     }
@@ -194,7 +194,7 @@ app.delete('/reset', async (req, res) => {
 app.post('/package/byRegEx', async (req, res) => {
     // Auth heaader stuff
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null) {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Authentication failed due to invalid or missing AuthenticationToken');
         return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
     }
@@ -234,7 +234,7 @@ app.post('/package/byRegEx', async (req, res) => {
 
 app.get('/package//rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -280,7 +280,7 @@ app.get('/package//rate', async (req, res) => {
  */
 app.get('/package/:id/rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -340,12 +340,12 @@ app.get('/package/:id/rate', async (req, res) => {
 
 app.get('/package/:id?', async (req, res) => {
     try {
-        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if (token == '' || token == null) { 
+        const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
+        if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
-        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
         try {
             if (updatedToken instanceof Error) {
                 logger.info('Invalid or expired token');
@@ -396,12 +396,12 @@ app.get('/package/:id?', async (req, res) => {
 
 app.post('/package/:id?', async (req, res) => { // change return body? right now not returning the new package info
     try {
-        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if (token == '' || token == null) { 
+        const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
+        if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
-        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
         if (updatedToken instanceof Error) {
             logger.info('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
@@ -831,7 +831,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
  */
 app.post('/package', async (req, res) => {
     const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(token == '' || token == null) {
+    if(!token || token == '' || token == null || token.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -1323,8 +1323,7 @@ app.get('/package//cost', async (req, res) => {
     let token;
     let isadmin;
     let usergroup;
-    // Authentication Check
-    if (!authToken) {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -1414,7 +1413,7 @@ app.get('/package/:id/cost', async (req, res) => {
     let isadmin;
     let usergroup;
     // Authentication Check
-    if (!authToken) {
+    if(!token || token == '' || token == null || token.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
