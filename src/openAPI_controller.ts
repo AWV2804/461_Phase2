@@ -62,7 +62,11 @@ import path from 'path';
 import * as s3 from './s3_utils.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+<<<<<<< HEAD
 import { AutoEncryptionLoggerLevel } from 'mongodb';
+=======
+import { connect } from 'http2';
+>>>>>>> c94cc40b40fabe3d026289e2d662c520041ff5dd
 
 // For TypeScript, you might need to cast to string
 const __filename = fileURLToPath(import.meta.url);
@@ -153,48 +157,69 @@ app.use((req, res, next) => {
 });
 app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
-        return res.status(403).send('Missing Authentication Header');
+        return res.status(403);
     }
     try {
         const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
         if(updatedToken instanceof Error) {
             logger.error('Invalid or expired token');
-            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+            return res.status(403);
         }
         if(isAdmin != true) {
             logger.error('You do not have the correct permissions to reset the registry.');
-            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+            return res.status(403);
         }
     } catch (error) {
         logger.error('Error verifying token:', error);
         return res.status(403).send('Invalid or expired token');
     }
     try {
+<<<<<<< HEAD
         
         const result = await db.deleteDB(packageDB[1]);
         const result2 = await db.deleteUsersExcept(UserModel);
+=======
+        const numPacks = await packageDB[1].listCollections().toArray();
+        const numUsers = await userDB[1].listConnections().toArray();
+        if (numPacks.length == 0 && numUsers.length == 1) {
+            return res.status(200).send('Registry has been reset.');
+        }
+        let result;
+        let result2;
+        if (numPacks.length != 0) {
+            result = await packageDB[1].dropCollection('Packages');
+        } else {
+            result = [false, 'No collections to delete'];
+        }
+        if (numUsers.length != 1) {
+            result2 = await userDB[1].dropCollection('Users');
+        } else {
+            result2 = [false, 'No collections to delete'];
+        }
+
+>>>>>>> c94cc40b40fabe3d026289e2d662c520041ff5dd
         if (result[0] == true && result2[0] == true) {
             logger.info('Registry is reset.');
-            return res.status(200).send('Registry is reset.');
+            return res.status(200).send('Registry has been reset.');
         } else if(result[0] == false) {
             logger.error('Error deleting database:', result[1]);
-            return res.status(500).send('Error deleting database');
+            return res.status(500);
         } else if(result2[0] == false) {
             logger.error('Error deleting user:', result2[1]);
-            return res.status(500).send('Error deleting user');
+            return res.status(500);
         }
     } catch (error) {
         logger.error('Error deleting database:', error);
-        res.status(500).send('Error deleting database');
+        return res.status(500);
     }
 });
 
 app.post('/package/byRegEx', async (req, res) => {
     // Auth heaader stuff
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null) {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Authentication failed due to invalid or missing AuthenticationToken');
         return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
     }
@@ -234,7 +259,7 @@ app.post('/package/byRegEx', async (req, res) => {
 
 app.get('/package//rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -280,7 +305,7 @@ app.get('/package//rate', async (req, res) => {
  */
 app.get('/package/:id/rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -340,12 +365,12 @@ app.get('/package/:id/rate', async (req, res) => {
 
 app.get('/package/:id?', async (req, res) => {
     try {
-        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if (token == '' || token == null) { 
+        const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
+        if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
-        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
         try {
             if (updatedToken instanceof Error) {
                 logger.info('Invalid or expired token');
@@ -394,14 +419,14 @@ app.get('/package/:id?', async (req, res) => {
     }
 });
 
-app.post('/package/:id?', async (req, res) => { // change return body? right now not returning the new package info
+app.post('/package/:id', async (req, res) => { // change return body? right now not returning the new package info
     try {
-        const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if (token == '' || token == null) { 
+        const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
+        if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
-        const { updatedToken, isAdmin, userGroup } = util.verifyToken(token);
+        const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
         if (updatedToken instanceof Error) {
             logger.info('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
@@ -831,7 +856,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
  */
 app.post('/package', async (req, res) => {
     const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(token == '' || token == null) {
+    if(!token || token == '' || token == null || token.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -936,7 +961,7 @@ app.post('/package', async (req, res) => {
                         JSProgram: JSProgram || '',
                     },
                 };
-                return res.status(409).send(jsonResponse);
+                return res.status(409).send("Package already exists");
             } else {
                 let version = packageJson.version;
                 if(version == null || version == "") {
@@ -1146,7 +1171,7 @@ app.put('/authenticate', async (req, res) => {
           !Secret ||
           typeof Secret.password !== 'string'
         ) {
-          return res.status(400).json({ error: 'Malformed AuthenticationRequest' });
+          return res.status(400).send('Malformed AuthenticationRequest');
         }
     
         const { name, isAdmin} = User;
@@ -1158,16 +1183,21 @@ app.put('/authenticate', async (req, res) => {
         // Query the database for the user
         const [found, user] = await db.getUserByName(name, UserModel);
         if(!found) {
-          return res.status(401).json({ error: 'Invalid username' });
+          return res.status(401).send('Invalid username');
         }
         if(user.userHash !== hashedPassword) {
-          return res.status(401).json({ error: 'Invalid password'});
+          return res.status(401).send('Invalid password');
         }
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
+<<<<<<< HEAD
         return res.status(200).json({ authToken: authToken });
+=======
+        const bearerToken = `bearer ${authToken}`;
+        return res.status(200).send(bearerToken);
+>>>>>>> c94cc40b40fabe3d026289e2d662c520041ff5dd
       } catch (error) {
         console.error(error);
-        return res.status(500).json({ error: 'Bad Request' });
+        return res.status(500).send('Bad Request');
       }
 });
 
@@ -1182,8 +1212,7 @@ app.get('/package//cost', async (req, res) => {
     let token;
     let isadmin;
     let usergroup;
-    // Authentication Check
-    if (!authToken) {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -1273,7 +1302,7 @@ app.get('/package/:id/cost', async (req, res) => {
     let isadmin;
     let usergroup;
     // Authentication Check
-    if (!authToken) {
+    if(!token || token == '' || token == null || token.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
