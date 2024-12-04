@@ -1286,7 +1286,7 @@ app.put('/authenticate', async (req, res) => {
           !Secret ||
           typeof Secret.password !== 'string'
         ) {
-          return res.status(400).json({ error: 'Malformed AuthenticationRequest' });
+          return res.status(400).send('Malformed AuthenticationRequest');
         }
     
         const { name, isAdmin} = User;
@@ -1298,16 +1298,16 @@ app.put('/authenticate', async (req, res) => {
         // Query the database for the user
         const [found, user] = await db.getUserByName(name, UserModel);
         if(!found) {
-          return res.status(401).json({ error: 'Invalid username' });
+          return res.status(401).send('Invalid username');
         }
         if(user.userHash !== hashedPassword) {
-          return res.status(401).json({ error: 'Invalid password'});
+          return res.status(401).send('Invalid password');
         }
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
-        return res.status(200).json({ authToken: authToken });
+        return res.status(200).send(authToken);
       } catch (error) {
         console.error(error);
-        return res.status(500).json({ error: 'Bad Request' });
+        return res.status(500).send('Bad Request');
       }
 });
 
