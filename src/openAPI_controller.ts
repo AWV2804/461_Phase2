@@ -410,7 +410,7 @@ app.get('/package/:id?', async (req, res) => {
     }
 });
 
-app.post('/package/:id?', async (req, res) => { // change return body? right now not returning the new package info
+app.post('/package/:id', async (req, res) => { // change return body? right now not returning the new package info
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
         if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
