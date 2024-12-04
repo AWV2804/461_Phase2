@@ -187,7 +187,7 @@ app.delete('/reset', async (req, res) => {
         }
     } catch (error) {
         logger.error('Error deleting database:', error);
-        res.status(500);
+        return res.status(500);
     }
 });
 
