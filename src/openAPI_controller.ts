@@ -1304,9 +1304,8 @@ app.put('/authenticate', async (req, res) => {
           return res.status(401).send('Invalid password');
         }
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
-        return res.status(200).send(`bearer ${authToken.trim()}`);
-
-        // return res.status(200).send(`bearer ${authToken}`);
+        const bearerToken = `bearer ${authToken}`;
+        return res.status(200).send(bearerToken);
       } catch (error) {
         console.error(error);
         return res.status(500).send('Bad Request');
