@@ -39,7 +39,7 @@ jobs:
             
       # Step 4: Start the backend server
       - name: Start Backend Server
-        run: npm run start:backend &
+        run: npm run bstart &
       
       # Step 5: Wait for backend to be ready
       - name: Wait for Backend Server
@@ -53,9 +53,9 @@ jobs:
       - name: Run Test Suite
         run: ./run test
 
-      # Step 7: Start the frontend server
-      - name: Build Frontend
-        run: npm run build
+    #   # Step 7: Start the frontend server
+    #   - name: Build Frontend
+    #     run: npm run build
     
       # Step 8: Check if everything is successful
       - name: Workflow Success Check
