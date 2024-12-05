@@ -3,8 +3,8 @@ import { URL, fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
 import AdmZip from 'adm-zip';
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/node/index.cjs';
+import * as git from 'isomorphic-git';
+import http from 'isomorphic-git/http/node';
 import fs from 'fs';
 import logger from './logging.js';
 import axios from 'axios';
@@ -85,20 +85,34 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
  *
  * @throws Will throw an error if the cloning or compression process fails.
  */
-export async function processGithubURL(url: string): Promise<string | null> {
+export async function processGithubURL(url: string, version: string): Promise<string | null> {
     const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
+    const tempFetch = path.join(__dirname, 'tmp', 'fetch-' + Date.now());
     fs.mkdirSync(tempDir, { recursive: true });
      try {
+        await git.fetch({
+            http,
+            fs,
+            url,
+            dir: tempFetch,
+            ref:  'refs/tags/*',
+            depth: 1,
+        });
+        const tags = await git.listTags({ fs, dir: tempFetch });
+
+        if (!tags.includes(version)) {
+            logger.error('Invalid version provided');
+            return '-1';
+        }
         await git.clone({
             fs,
             http,
             dir: tempDir,
             url: url,
+            ref: `refs/tags/${version}`,
             singleBranch: true,
             depth: 1,
         });
-        logger.info('Temp Dir: ', tempDir);
-        logger.info ('Files: ', fs.readdirSync(tempDir));
 
 
         const zip = new AdmZip();
@@ -109,7 +123,8 @@ export async function processGithubURL(url: string): Promise<string | null> {
         logger.error('Error processing package content from URL:', error);
         return null;
     } finally {
-        fs.rmSync(tempDir, { recursive: true });
+        fs.rmSync(tempDir, { recursive: true , force: true});
+        fs.rmSync(tempFetch, { recursive: true , force: true});
     }
 }
 
@@ -291,4 +306,3 @@ export async function createZipFromDir(dir: string) {
     zip.addLocalFolder(dir);
     return zip.toBuffer();
 }
-

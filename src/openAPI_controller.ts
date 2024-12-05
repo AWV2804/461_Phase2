@@ -491,7 +491,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 }
 
                 // Process the URL
-                content = await util.processGithubURL(url);
+                content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
                     return res.status(500).send('Error processing package content from URL');
