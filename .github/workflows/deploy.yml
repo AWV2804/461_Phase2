@@ -100,6 +100,6 @@ jobs:
         echo "Starting backend server in the background..." >> $LOG_FILE
         mkdir public
         mv index.html public/index.html
-        cp /home/${{ secrets.EC2_USER}}/build/node_modules/react-refresh/runtime.js /home/${{ secrets.EC2_USER}}/build/src
+        cp /home/${{ secrets.EC2_USER}}/build/node_modules/react-refresh/runtime.js /home/${{ secrets.EC2_USER}}/build/src/frontend/src/
         nohup npm run start:dev > $LOG_FILE 2>&1 &
         EOF
