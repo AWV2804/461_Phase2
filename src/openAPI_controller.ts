@@ -75,8 +75,6 @@ const possibleReadmeFiles = [
     'README.rst',
     'README.markdown',
     'README.html',
-    'Readme.md',
-    'readme.md'
 ];
 
 const monkeyBusiness = '\"bearer 66abf860f10edcdd512e9f3f9fdc8af1bdc676503922312f8323f5090ef09a6a\"'
@@ -909,6 +907,7 @@ app.post('/package', async (req, res) => {
         try {
             // Decode the base64-encoded zip file
             const buffer = Buffer.from(Content, 'base64');
+    
             // Load the zip file using adm-zip
             const zip = new AdmZip(buffer);
     
