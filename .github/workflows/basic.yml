@@ -65,7 +65,7 @@ jobs:
       # Step 7: Upload the logs
       - name: Upload bstart Logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bstart-logs
           path: bstart.log
