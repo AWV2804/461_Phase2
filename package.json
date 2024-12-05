@@ -6,7 +6,6 @@
   "scripts": {
     "test": "vitest run --coverage.enabled=true  --reporter verbose > test-results.txt   && node test/printResults.js",
     "coverage": "vitest run --coverage",
-    "prestart": "find src/frontend/src -type f -name '*.js' -delete",
     "start": "react-scripts start",
     "prebuild": "find src/frontend/src -type f -name '*.js' -delete",
     "build:frontend": "react-scripts build",
@@ -18,7 +17,7 @@
     "start:backend:dev": "node src/openAPI_controller.js",
     "start:frontend": "react-scripts start",
     "start:dev": "concurrently \"npm run start:backend:dev\" \"npm run start:frontend\"",
-    "bstart": "concurrently \"npm run prestart\" \"npm run start:backend\" \"react-scripts start\""
+    "bstart": "npx tsc && concurrently \"npm run start\" \"npm run start:backend\""
   },
   "type": "module",
   "keywords": [],

@@ -39,8 +39,6 @@ const Login: React.FC = () => {
         },
       });
       const backendUrl = constructBackendUrl('/authenticate');
-      console.log("BackendURL: ", backendUrl);
-      console.log('Request Body:', requestBody); // Log the request body
   
       const response = await fetch(backendUrl, { // Explicitly use the full URL
         method: 'PUT',
@@ -50,25 +48,21 @@ const Login: React.FC = () => {
         },
         body: requestBody,
       });
-  
-      console.log(username, password);
-      
-      if (response.status === 200) {
-        const data = await response.json();
-        console.log('Authentication successful:', data.authToken);
         
+      if (response.status === 200) {
+        const authToken = await response.text();
+
         // Decode the token to extract isAdmin information
-        const decodedToken = jwtDecode<DecodedToken>(data.authToken);
-        console.log('Decoded token:', decodedToken);
+        const decodedToken = jwtDecode<DecodedToken>(authToken);
         const isAdmin = decodedToken.isAdmin;
         const userGroup = decodedToken.userGroup;
         
-        login(isAdmin, username, data.authToken, userGroup);
+        login(isAdmin, username, authToken, userGroup);
         navigate('/'); // Redirect to Home or another page upon successful login
       } else {
-        const errorData = await response.json();
-        console.error('Authentication failed:', errorData.error);
-        alert(`Login failed: ${errorData.error}`);
+        const errorData = await response.text();
+        console.error('Authentication failed:', errorData);
+        alert(`Login failed: ${errorData} \nError: ${response.status}`);
       }
     } catch (error) {
       console.error('Error during authentication:', error);
