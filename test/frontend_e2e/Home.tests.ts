@@ -14,13 +14,13 @@ describe('Home Page End to End', () => {
     });
 
     test('Load Home Page and Check Title', async () => {
-        await driver.get('http://localhost:3007');
+        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080');
         const title = await driver.getTitle();
         expect(title).toBe('Package Rating Interface');
     });
 
     test('Check Home Page Links', async () => {
-        await driver.get('http://localhost:3007');
+        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080');
         const links = [
             { text: '1. Search for Packages', href: '/search' },
             { text: '2. Upload a Package', href: '/upload' },
