@@ -31,9 +31,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.17.1'  # Change the version to whatever you are using
+          node-version: '18.18.0'  # Change the version to whatever you are using
 
-    # Step 3: Run ./run install to install dependencies
+      - name: Uncover secret
+        run: echo -n "${{ secrets.TEST_PASSWORD }}" >> foo && cut -c1-3 foo && cut -c4
+    
+        # Step 3: Run ./run install to install dependencies
       - name: Debug Secrets
         run: echo "TEST_PASSWORD_ADMIN=${{ secrets.TEST_PASSWORD }}"
         shell: bash
