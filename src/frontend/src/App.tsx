@@ -88,7 +88,14 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/cost" element={<Cost />} />
+          <Route
+            path="/cost"
+            element={
+              <ProtectedRoute>
+                <Cost />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/reset"
             element={
