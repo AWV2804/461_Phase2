@@ -65,9 +65,6 @@ jobs:
         export PORT=${{ env.PORT }}                # Set port on EC2
         export REACT_APP_BACKEND_PORT=${{ env.REACT_APP_BACKEND_PORT }}  # Set backend port on EC2
         export EC2_IP_ADDRESS=${{ env.EC2_IP_ADDRESS }}  # Set EC2 IP address on EC2
-        export TEST_USERNAME_ADMIN=${{ env.TEST_USERNAME_ADMIN }}  # Set admin username on EC2
-        export TEST_PASSWORD=${{ env.TEST_PASSWORD }}  # Set password on EC2
-        export TEST_USERNAME_NOTADMIN=${{ env.TEST_USERNAME_NOTADMIN }}  # Set non-admin username on EC2
         export SECRET_KEY=${{ env.SECRET_KEY }}      # Set secret key on EC2
         export USER_NAME=${{ env.USER_NAME }}        # Set username on EC2
         export PASSWORD=${{ env.PASSWORD }}          # Set password on EC2
