@@ -42,7 +42,7 @@ export function output_formatter(url: string, metric_array: any[], test_metric: 
         '"ResponsiveMaintainer": ' + `${metric_array[3].toFixed(3)}, ` +
         '"ResponsiveMaintainer_Latency": ' + `${test_metric.maintainer_latency.toFixed(3)}, ` +
         '"License": ' + `${metric_array[4].toFixed(3)}, ` +
-        '"License_Latency": ' + `${test_metric.license_latency.toFixed(3)}` +
+        '"License_Latency": ' + `${test_metric.license_latency.toFixed(3)}, ` +
         '"PullRequestsCodeMetric": ' + `${metric_array[5].toFixed(3)}, ` +
         '"PullRequestsCodeMetric_Latency": ' + `${test_metric.pull_requests_code_metric_latency.toFixed(3)}, ` +
         '"DependencyPinning": ' + `${metric_array[6].toFixed(3)}, ` +
