@@ -15,6 +15,7 @@ describe('Admin Tests', () => {
 
     const hashedPW = SHA256(password).toString();
     console.log("HAHAHSED PASSWORD: ", hashedPW);
+    console.log("VNMASD: ", password);
 
     beforeAll(async () => {
         const options = new chrome.Options();
