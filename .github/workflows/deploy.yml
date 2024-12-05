@@ -100,5 +100,6 @@ jobs:
         echo "Starting backend server in the background..." >> $LOG_FILE
         mkdir public
         mv index.html public/index.html
+        npm link
         nohup npm run start:dev > $LOG_FILE 2>&1 &
         EOF
