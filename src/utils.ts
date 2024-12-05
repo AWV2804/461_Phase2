@@ -96,10 +96,14 @@ export async function processGithubURL(url: string): Promise<string | null> {
             url: url,
             singleBranch: true,
             depth: 1,
-        })
+        });
+        logger.info('Temp Dir: ', tempDir);
+        logger.info ('Files: ', fs.readdirSync(tempDir));
+
 
         const zip = new AdmZip();
         zip.addLocalFolder(tempDir);
+        logger.info('Base64 Encoded Zip Buffer: ', zip.toBuffer().toString('base64'));
         return zip.toBuffer().toString('base64');
     } catch(error) {
         logger.error('Error processing package content from URL:', error);
