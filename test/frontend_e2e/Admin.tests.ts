@@ -2,7 +2,8 @@
 import dotenv from 'dotenv';
 import { Builder, By, until, WebDriver } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome';
-import { crypto } from 'crypto';
+import SHA256 from 'crypto-js/sha256.js';
+
 dotenv.config();
 
 describe('Admin Tests', () => {
@@ -11,6 +12,9 @@ describe('Admin Tests', () => {
     const password = process.env.TEST_PASSWORD || 'athar';
     const newUsername = 'newTestUs123er';
     const newPassword = 'newTestPassword';
+
+    const hashedPW = SHA256(password).toString();
+    console.log("HAHAHSED PASSWORD: ", hashedPW);
 
     beforeAll(async () => {
         const options = new chrome.Options();
@@ -26,7 +30,7 @@ describe('Admin Tests', () => {
     });
 
     beforeEach(async () => {
-        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080/login'); // Replace with your frontend URL
+        await driver.get(`http://localhost:${process.env.PORT}/login`); // Replace with your frontend URL
 
         const usernameInput = await driver.findElement(By.css('input[type="text"]'));
         const passwordInput = await driver.findElement(By.css('input[type="password"]'));
@@ -42,7 +46,7 @@ describe('Admin Tests', () => {
         // Wait for redirection to homepage
         await driver.wait(async () => {
             const currentUrl = await driver.getCurrentUrl();
-            return currentUrl === 'http://ec2-3-84-91-136.compute-1.amazonaws.com:8080/login';
+            return currentUrl === `http://localhost:${process.env.PORT}/login`;
         }, 5000);
 
         // Verify "Logged in as:" text

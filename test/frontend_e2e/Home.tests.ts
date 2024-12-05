@@ -1,7 +1,9 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { setupDriver } from '../../selenium.config.js';
 import { By, until, WebDriver } from 'selenium-webdriver';
+import dotenv from 'dotenv';
 
+dotenv.config();
 describe('Home Page End to End', () => {
     let driver: WebDriver;
 
@@ -14,13 +16,13 @@ describe('Home Page End to End', () => {
     });
 
     test('Load Home Page and Check Title', async () => {
-        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080');
+        await driver.get(`http://localhost:${process.env.PORT}/`);
         const title = await driver.getTitle();
         expect(title).toBe('Package Rating Interface');
     });
 
     test('Check Home Page Links', async () => {
-        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080');
+        await driver.get(`http://localhost:${process.env.PORT}/`);
         const links = [
             { text: '1. Search for Packages', href: '/search' },
             { text: '2. Upload a Package', href: '/upload' },

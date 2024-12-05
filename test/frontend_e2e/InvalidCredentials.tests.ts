@@ -22,7 +22,7 @@ describe('Login Tests', () => {
     });
 
     test('Login with invalid username', async () => {
-        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080/login'); // Replace with your frontend URL
+        await driver.get(`http://localhost:${process.env.PORT}/login`); // Replace with your frontend URL
         const usernameInput = await driver.findElement(By.css('input[type="text"]'));
         const passwordInput = await driver.findElement(By.css('input[type="password"]'));
         const loginButton = await driver.findElement(By.css('button[type="button"]'));
@@ -56,7 +56,7 @@ describe('Logged Out Protected Routes Tests', () => {
     });
 
     test('Verify none of the links are accessible when logged out', async () => {
-        await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080');
+        await driver.get(`http://localhost:${process.env.PORT}`);
         const links = [
             { text: '1. Search for Packages', href: '/search' },
             { text: '2. Upload a Package', href: '/upload' },
@@ -81,7 +81,7 @@ describe('Logged Out Protected Routes Tests', () => {
                 expect(alertText).toContain("You must be logged in to view this page.");
                 await alert.accept();
 
-            await driver.get('http://ec2-3-84-91-136.compute-1.amazonaws.com:8080');
+            await driver.get(`http://localhost:${process.env.PORT}/`);
             }
     });
 });

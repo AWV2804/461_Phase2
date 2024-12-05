@@ -110,7 +110,6 @@ elif [ "$command" = "build" ]; then
 elif [ "$command" = "test" ]; then
     echo "Running tests..."
     npx tsc
-    find src/frontend/src -type f -name '*.js' -delete 
     npx vitest run --coverage.enabled=true 
     exit $?
 else
