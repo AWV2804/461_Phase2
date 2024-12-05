@@ -1185,7 +1185,14 @@ app.put('/authenticate', async (req, res) => {
         if(user.userHash !== hashedPassword) {
           return res.status(401).send('Invalid password');
         }
+        console.log(`User: ${User}`);
+        console.log(`Secret: ${Secret}`);
+        console.log(`Userhash: ${user.userHash}`);
+        console.log(`Hashed Password: ${hashedPassword}`);
+        console.log(`user: ${user}`);
+
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
+        console.log(`authToken: ${authToken}`);
         const bearerToken = `bearer ${authToken}`;
         console.log(`bearer token: ${bearerToken}`);
         return res.status(200).send(bearerToken);
