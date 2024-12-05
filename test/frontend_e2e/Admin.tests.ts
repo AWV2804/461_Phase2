@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { Builder, By, until, WebDriver } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome';
 import SHA256 from 'crypto-js/sha256.js';
+import { ConsoleLogEntry } from 'selenium-webdriver/bidi/logEntries';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ describe('Admin Tests', () => {
     const newPassword = 'newTestPassword';
 
     const hashedPW = SHA256(password).toString();
+    console.log("username: ", username);
     console.log("HAHAHSED PASSWORD: ", hashedPW);
     console.log("VNMASD: ", password);
 
