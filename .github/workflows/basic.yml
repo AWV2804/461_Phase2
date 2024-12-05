@@ -18,7 +18,11 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PORT: ${{ vars.PORT }}
       REACT_APP_BACKEND_PORT: ${{ vars.REACT_APP_BACKEND_PORT }}
-        
+      TEST_USERNAME_ADMIN: ${{ secrets.TEST_USERNAME_ADMIN }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      TEST_USERNAME_NOTADMIN: ${{ secrets.TEST_USERNAME_NOTADMIN }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      
     steps:
       # Step 1: Checkout the code from the repository
       - name: Checkout Code
@@ -28,34 +32,45 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.17.1'  # Change the version to whatever you are using
-
-      # Step 3: Run ./run install to install dependencies
+          node-version: '18.18.0'  # Change the version to whatever you are using
+    
+        # Step 3: Run ./run install to install dependencies
       - name: Install Dependencies
         run: ./run install
-
-      # Step 4: Run tests to execute the test suite
-      - name: Run Test Suite
-        run: npx vitest run --coverage.enabled=true
-        
             
-      # Step 6: Start the backend server
+      # Step 4: Start the backend server
       - name: Start Backend Server
-        run: npm run start:backend &
-      
-      # Step 7: Wait for backend to be ready
+        run: |
+            npm run bstart > bstart.log 2>&1 &
+      # Step 5a: Install wait-on
+      - name: Install wait-on
+        run: npm install -g wait-on
+
+      # Step 5b: Wait for backend to be ready
       - name: Wait for Backend Server
         run: |
             echo "Waiting for backend to start..."
-            sleep 60  # Adjust time if backend takes longer to start
-            curl -f http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs || exit 1
-        shell: bash     
+            wait-on http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs && echo "Backend is up!"
       
-      # Step 8: Start the frontend server
-      - name: Build Frontend
-        run: npm run build
-    
-      # Step 9: Check if everything is successful
+      # Step 5b: Wait for frontend to be ready
+      - name: Wait for Frontend Server
+        run: |
+          echo "Waiting for frontend to start..."
+          wait-on http://127.0.0.1:${{env.PORT}}/ && echo "Frontend is up!"
+
+      # Step 6: Run tests to execute the test suite
+      - name: Run Test Suite
+        run: ./run test
+
+      # Step 7: Upload the logs
+      - name: Upload bstart Logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bstart-logs
+          path: bstart.log
+
+      # Step 8: Check if everything is successful
       - name: Workflow Success Check
         if: ${{ success() }}
         run: echo "Both backend and frontend started successfully. Workflow passed!"

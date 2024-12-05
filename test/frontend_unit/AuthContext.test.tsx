@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AuthProvider, AuthContext } from '../src/frontend/src/AuthContext';
+import { AuthProvider, AuthContext } from '../../src/frontend/src/AuthContext';
 
 describe('AuthContext', () => {
     it('should have default values', () => {
@@ -31,7 +31,7 @@ describe('AuthContext', () => {
                 <AuthContext.Consumer>
                     {(value) => (
                         <>
-                            <button onClick={() => value.login(true, 'testUser', 'testToken')}>Login</button>
+                            <button onClick={() => value.login(true, 'testUser', 'testToken', 'testGroup')}>Login</button>
                             <span data-testid="isLoggedIn">{value.isLoggedIn.toString()}</span>
                             <span data-testid="isAdmin">{value.isAdmin.toString()}</span>
                             <span data-testid="username">{value.username}</span>
@@ -56,7 +56,7 @@ describe('AuthContext', () => {
                 <AuthContext.Consumer>
                     {(value) => (
                         <>
-                            <button onClick={() => value.login(true, 'testUser', 'testToken')}>Login</button>
+                            <button onClick={() => value.login(true, 'testUser', 'testToken', 'testGroup')}>Login</button>
                             <button onClick={value.logout}>Logout</button>
                             <span data-testid="isLoggedIn">{value.isLoggedIn.toString()}</span>
                             <span data-testid="isAdmin">{value.isAdmin.toString()}</span>

@@ -423,6 +423,8 @@ app.get('/package/:id?', async (req, res) => {
         return res.status(500).json({ error: 'Bad Request' });
     }
 });
+
+
 /**
  * @swagger
  * /package:
@@ -860,6 +862,7 @@ app.post('/package', async (req, res) => {
     
 });
 
+
 app.post('/package/:id?', async (req, res) => { // change return body? right now not returning the new package info
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
@@ -935,7 +938,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
                 }
 
                 // Process the URL
-                content = await util.processGithubURL(url);
+                content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
                     return res.status(500).send('Error processing package content from URL');
@@ -1163,6 +1166,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
     }
 });
 
+
 app.put('/authenticate', async (req, res) => {
     try {
         const { User, Secret } = req.body;
@@ -1191,11 +1195,20 @@ app.put('/authenticate', async (req, res) => {
         if(user.userHash !== hashedPassword) {
           return res.status(401).send('Invalid password');
         }
+        console.log(`User: ${User}`);
+        console.log(`Secret: ${Secret}`);
+        console.log(`Userhash: ${user.userHash}`);
+        console.log(`Hashed Password: ${hashedPassword}`);
+        console.log(`user: ${user}`);
+
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
+        console.log(`authToken: ${authToken}`);
         const bearerToken = `bearer ${authToken}`;
+        console.log(`bearer token: ${bearerToken}`);
         return res.status(200).send(bearerToken);
       } catch (error) {
-        console.error(error);
+        console.error(`Hasbulla: ${error}`);
+        console.log(`Hasbulla: ${error}`);
         return res.status(500).send('Bad Request');
       }
 });

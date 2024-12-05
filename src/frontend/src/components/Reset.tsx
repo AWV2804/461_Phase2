@@ -5,7 +5,6 @@ import './Styling/Reset.css';
 
 const Reset: React.FC = () => {
   const { x_authorization } = useContext(AuthContext);
-  console.log(x_authorization);
 
   const constructBackendUrl = (path: string): string => {
     const { protocol, hostname } = window.location;

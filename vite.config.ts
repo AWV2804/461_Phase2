@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   test: {
     exclude: ['test/testing_data/**', 'node_modules'],
+    include: ['test/**/**'],
     testTimeout: 40000,
     globals: true,
     includeSource: ['src/**/*.{js,jsx,tsx}'], // Include .jsx and .tsx files

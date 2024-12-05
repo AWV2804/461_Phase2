@@ -1,6 +1,5 @@
 // src/frontend/src/components/CreateAccount.tsx
 import React, { useState } from 'react';
-import SHA256 from 'crypto-js/sha256.js';
 import './Styling/CreateAccount.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -45,7 +44,6 @@ const CreateAccount: React.FC = () => {
       });
 
       const data = await response.json();
-
       if (response.status === 200) {
         alert(`Account created successfully for user: ${username} with admin: ${isAdmin}!`);
         // Reset fields
@@ -74,6 +72,7 @@ const CreateAccount: React.FC = () => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="form-input"
+            data-testid="username-input"
           />
         </label>
         <label className="form-label">
@@ -83,6 +82,7 @@ const CreateAccount: React.FC = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="form-input"
+            data-testid="password-input"
           />
         </label>
         <label className="form-label">
@@ -92,6 +92,7 @@ const CreateAccount: React.FC = () => {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="form-input"
+            data-testid="confirm-password-input"
           />
         </label>
         {addUserGroup && (
@@ -102,6 +103,7 @@ const CreateAccount: React.FC = () => {
               value={userGroup}
               onChange={(e) => setUserGroup(e.target.value)}
               className="form-input"
+              data-testid="group-input"
             />
           </label>
         )}
@@ -113,6 +115,7 @@ const CreateAccount: React.FC = () => {
               checked={isAdmin}
               onChange={(e) => setIsAdmin(e.target.checked)}
               className="checkbox-input"
+              data-testid="admin-checkbox"
             />
           </label>
           <label className="checkbox-label">
@@ -122,10 +125,11 @@ const CreateAccount: React.FC = () => {
               checked={addUserGroup}
               onChange={(e) => setAddUserGroup(e.target.checked)}
               className="checkbox-input"
+              data-testid="add-user-group-checkbox"
             />
           </label>
         </div>
-        <button type="button" onClick={handleCreateAccount} className="submit-button">
+        <button type="button" onClick={handleCreateAccount} className="submit-button" data-testid="create-account-button">
           Create Account
         </button>
       </form>
