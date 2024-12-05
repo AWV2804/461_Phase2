@@ -55,7 +55,7 @@ jobs:
       - name: Wait for Frontend Server
         run: |
           echo "Waiting for frontend to start..."
-          wait-on http://localhost:${{env.PORT}}/ && echo "Frontend is up!"
+          wait-on http://127.0.0.1:${{env.PORT}}/ && echo "Frontend is up!"
 
       # Step 6: Run tests to execute the test suite
       - name: Run Test Suite
@@ -68,7 +68,7 @@ jobs:
         with:
           name: bstart-logs
           path: bstart.log
-          
+
       # Step 8: Check if everything is successful
       - name: Workflow Success Check
         if: ${{ success() }}
