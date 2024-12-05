@@ -13,13 +13,12 @@ describe('Admin Tests', () => {
     const password = process.env.TEST_PASSWORD || 'athar';
     const newUsername = 'newTestUs123er';
     const newPassword = 'newTestPassword';
-
-    const stringedPW = password.toString();
+    
+    const hashedUser = SHA256(username).toString();
     const hashedPW = SHA256(password).toString();
-    console.log("username: ", username);
-    console.log("stringed pw: ", stringedPW);
-    console.log("HAHAHSED PASSWORD: ", hashedPW);
-    console.log("VNMASD: ", password);
+    
+    console.log(`Hashed username: ${hashedUser}`);
+    console.log(`Hashed password: ${hashedPW}`);
 
     beforeAll(async () => {
         const options = new chrome.Options();
