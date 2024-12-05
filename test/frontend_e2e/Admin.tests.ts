@@ -7,8 +7,8 @@ dotenv.config();
 
 describe('Admin Tests', () => {
     let driver: WebDriver;
-    const username = process.env.TEST_USERNAME_ADMIN || 'testuser';
-    const password = process.env.TEST_PASSWORD || 'testpassword';
+    const username = process.env.TEST_USERNAME_ADMIN || 'athar';
+    const password = process.env.TEST_PASSWORD || 'athar';
     const newUsername = 'newTestUs123er';
     const newPassword = 'newTestPassword';
 
