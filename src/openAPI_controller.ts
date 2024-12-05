@@ -156,18 +156,18 @@ app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
-        return res.status(403);
+        return res.status(403).send('Missing Authentication Header');
     }
     try {
         logger.info("Verifying token");
         const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
         if(updatedToken instanceof Error) {
             logger.error('Invalid or expired token');
-            return res.status(403);
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
         if(isAdmin != true) {
             logger.error('You do not have the correct permissions to reset the registry.');
-            return res.status(403);
+            return res.status(403).send('You do not have the correct permissions to reset the registry.');
         }
         logger.info('Token verified');
     } catch (error) {
@@ -202,14 +202,14 @@ app.delete('/reset', async (req, res) => {
             return res.status(200).send('Registry has been reset.');
         } else if(result[0] == false) {
             logger.error('Error deleting database:', result[1]);
-            return res.status(500);
+            return res.status(500).send('Error deleting database');
         } else if(result2[0] == false) {
             logger.error('Error deleting user:', result2[1]);
-            return res.status(500);
+            return res.status(500).send('Error deleting user');
         }
     } catch (error) {
         logger.error('Error deleting database:', error);
-        return res.status(500);
+        return res.status(500).send('Error deleting database');
     }
 });
 
