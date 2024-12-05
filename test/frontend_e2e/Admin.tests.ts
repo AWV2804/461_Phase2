@@ -34,7 +34,7 @@ describe('Admin Tests', () => {
     });
 
     beforeEach(async () => {
-        await driver.get(`http://localhost:${process.env.PORT}/login`); // Replace with your frontend URL
+        await driver.get(`http://ec2-3-84-91-136.compute-1.amazonaws.com:8080/login`); // Replace with your frontend URL
 
         const usernameInput = await driver.findElement(By.css('input[type="text"]'));
         const passwordInput = await driver.findElement(By.css('input[type="password"]'));
@@ -50,7 +50,7 @@ describe('Admin Tests', () => {
         // Wait for redirection to homepage
         await driver.wait(async () => {
             const currentUrl = await driver.getCurrentUrl();
-            return currentUrl === `http://localhost:${process.env.PORT}/login`;
+            return currentUrl === `http://ec2-3-84-91-136.compute-1.amazonaws.com:8080/login`;
         }, 5000);
 
         // Verify "Logged in as:" text
