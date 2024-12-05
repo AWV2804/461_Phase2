@@ -14,8 +14,10 @@ describe('Admin Tests', () => {
     const newUsername = 'newTestUs123er';
     const newPassword = 'newTestPassword';
 
+    const stringedPW = password.toString();
     const hashedPW = SHA256(password).toString();
     console.log("username: ", username);
+    console.log("stringed pw: ", stringedPW);
     console.log("HAHAHSED PASSWORD: ", hashedPW);
     console.log("VNMASD: ", password);
 
