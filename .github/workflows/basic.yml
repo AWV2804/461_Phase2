@@ -39,24 +39,36 @@ jobs:
             
       # Step 4: Start the backend server
       - name: Start Backend Server
-        run: npm run bstart &
-      
-      # Step 5: Wait for backend to be ready
+        run: |
+            npm run bstart > bstart.log 2>&1 &
+      # Step 5a: Install wait-on
+      - name: Install wait-on
+        run: npm install -g wait-on
+
+      # Step 5b: Wait for backend to be ready
       - name: Wait for Backend Server
         run: |
             echo "Waiting for backend to start..."
-            sleep 60  # Adjust time if backend takes longer to start
-            curl -f http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs || exit 1
-        shell: bash   
+            wait-on http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs && echo "Backend is up!"
+      
+      # Step 5b: Wait for frontend to be ready
+      - name: Wait for Frontend Server
+        run: |
+          echo "Waiting for frontend to start..."
+          wait-on http://localhost:${{env.PORT}}/ && echo "Frontend is up!"
 
       # Step 6: Run tests to execute the test suite
       - name: Run Test Suite
         run: ./run test
 
-    #   # Step 7: Start the frontend server
-    #   - name: Build Frontend
-    #     run: npm run build
-    
+      # Step 7: Upload the logs
+      - name: Upload bstart Logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: bstart-logs
+          path: bstart.log
+          
       # Step 8: Check if everything is successful
       - name: Workflow Success Check
         if: ${{ success() }}
