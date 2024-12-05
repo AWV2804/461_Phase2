@@ -228,7 +228,6 @@ export async function deleteDB(db: mongoose.Connection) {
 export async function deleteUsersExcept(User: mongoose.Model<any>): Promise<[boolean, string | Error]> {
     try {
         // Validate rootHash
-        console.log(User);
         // Perform deletion: delete all users where userHash is not equal to rootHash
         const deleteResult = await User.deleteMany({ username: { $ne: rootName } });
 
