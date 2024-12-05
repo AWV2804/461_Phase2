@@ -728,8 +728,8 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                         return res.status(500).send('Error uploading content to S3');
                     }
 
-                    logger.info('Error updating package');
-                    return res.status(500).send('Error updating package');
+                    logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
+                    return res.status(200).send('Package has been updated');
                 } else if (parseInt(patchKey) == latestUploadedPatch) {
                     logger.info('Version already exists');
                     return res.status(409).send('Version already exists');
