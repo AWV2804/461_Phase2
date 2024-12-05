@@ -43,6 +43,9 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
 
         if (typeof repository === 'string') {
             // Handle shorthand format like "github:user/repo"
+            if (/^[^/]+\/[^/]+$/.test(repository)) {
+                return `https://github.com/${repository}`;
+            }
             if (repository.startsWith('github:')) {
                 const [owner, repo] = repository.replace('github:', '').split('/');
                 return `https://github.com/${owner}/${repo}`;
@@ -87,23 +90,8 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
  */
 export async function processGithubURL(url: string, version: string): Promise<string | null> {
     const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
-    const tempFetch = path.join(__dirname, 'tmp', 'fetch-' + Date.now());
     fs.mkdirSync(tempDir, { recursive: true });
      try {
-        await git.fetch({
-            http,
-            fs,
-            url,
-            dir: tempFetch,
-            ref:  'refs/tags/*',
-            depth: 1,
-        });
-        const tags = await git.listTags({ fs, dir: tempFetch });
-
-        if (!tags.includes(version)) {
-            logger.error('Invalid version provided');
-            return '-1';
-        }
         await git.clone({
             fs,
             http,
@@ -117,14 +105,13 @@ export async function processGithubURL(url: string, version: string): Promise<st
 
         const zip = new AdmZip();
         zip.addLocalFolder(tempDir);
-        logger.info('Base64 Encoded Zip Buffer: ', zip.toBuffer().toString('base64'));
         return zip.toBuffer().toString('base64');
     } catch(error) {
         logger.error('Error processing package content from URL:', error);
+        console.error('Error processing package content from URL:', error);
         return null;
     } finally {
         fs.rmSync(tempDir, { recursive: true , force: true});
-        fs.rmSync(tempFetch, { recursive: true , force: true});
     }
 }
 
