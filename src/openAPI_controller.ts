@@ -1187,9 +1187,11 @@ app.put('/authenticate', async (req, res) => {
         }
         const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
         const bearerToken = `bearer ${authToken}`;
+        console.log(`bearer token: ${bearerToken}`);
         return res.status(200).send(bearerToken);
       } catch (error) {
-        console.error(error);
+        console.error(`Hasbulla: ${error}`);
+        console.log(`Hasbulla: ${error}`);
         return res.status(500).send('Bad Request');
       }
 });
