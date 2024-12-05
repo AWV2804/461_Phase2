@@ -616,7 +616,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
 
             const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
             let base64zip = '';
-            if (debloat) {
+            if (debloat && !isUrl) {
                 await util.extractFiles(zip, tempDir);
                 await util.treeShakePackage(tempDir);
                 const updatedZipBuffer = await util.createZipFromDir(tempDir);
