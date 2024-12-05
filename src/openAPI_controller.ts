@@ -500,10 +500,14 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 }
 
                 // Process the URL
+                console.log('Processing URL:', url);
                 content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
                     return res.status(500).send('Error processing package content from URL');
+                } else if (content == '-1') {
+                    logger.info('No such version exists (URL update)');
+                    return res.status(404).send('No such version exists');
                 }
             } catch(error) {
                 logger.error('Error processing package content from URL:', error);
@@ -902,7 +906,6 @@ app.post('/package', async (req, res) => {
         try {
             // Decode the base64-encoded zip file
             const buffer = Buffer.from(Content, 'base64');
-    
             // Load the zip file using adm-zip
             const zip = new AdmZip(buffer);
     
@@ -1527,7 +1530,6 @@ app.put('/authenticate', async (req, res) => {
       }
 });
 
-// === New /package/:id/cost Endpoint ===
 
 app.get('/package//cost', async (req, res) => {
     // Extract Authentication Token
@@ -1628,7 +1630,7 @@ app.get('/package/:id/cost', async (req, res) => {
     let isadmin;
     let usergroup;
     // Authentication Check
-    if(!token || token == '' || token == null || token.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
