@@ -101,6 +101,7 @@ export async function processGithubURL(url: string, version: string): Promise<st
             dir: tempFetch,
             ref:  'refs/tags/*',
             depth: 1,
+            singleBranch: false
         });
         console.log('after fetch')
         const tags = await git.listTags({ fs, dir: tempFetch });
@@ -130,6 +131,7 @@ export async function processGithubURL(url: string, version: string): Promise<st
         return zip.toBuffer().toString('base64');
     } catch(error) {
         logger.error('Error processing package content from URL:', error);
+        console.error('Error processing package content from URL:', error);
         return null;
     } finally {
         fs.rmSync(tempDir, { recursive: true , force: true});
@@ -148,17 +150,24 @@ export async function processGithubURL(url: string, version: string): Promise<st
  */
 export async function processNPMUrl(url: string): Promise<string | null> {
     try {
-        const response = await axios.get(url);
+        const packageName = url.split('/').pop(); // Extract package name from URL
+        const npmRegistryUrl = `https://registry.npmjs.org/${packageName}`;
+        const response = await axios.get(npmRegistryUrl);
+        console.log('response worked, url:' , url);
         const repo = response.data.repository;
+        console.log('repo:', repo);
         if (repo && repo.url) {
             // replace the git+ prefix and .git suffix
             const githubUrl = repo.url.replace(/^git\+/, '').replace(/\.git$/,'');
             logger.info('Properly extracted github url from npm: ', githubUrl);
+            console.log('github url:', githubUrl);
             return githubUrl;
         }
+        console.log('No repository field found in package.json');
         logger.info('No repository field found in package.json');
         return null;
     } catch (error) {
+        console.log('Error processing package content from URL:', error);
         logger.error('Error processing package content from URL:', error);
         return null;
     }
