@@ -405,7 +405,7 @@ app.get('/package/:id?', async (req, res) => {
         }
         const packInfo = packageInfo[1] as any[];
         const packageContentBuffer = await s3.requestContentFromS3(packageID);
-        const packageContent = packageContentBuffer.toString('base64');
+        const packageContent = packageContentBuffer.toString('utf-8');
         const jsonResponse = {
             metadata: {
                 Name: packInfo[0].name,

@@ -6,7 +6,7 @@ const BUCKET_NAME = "ece461-zipped-packages";
 
 const streamToBuffer = (stream: Readable): Promise<Buffer> => { // Convert stream to buffer. allows for downloading files from s3
     return new Promise((resolve, reject) => {
-        const chunks: any[] = [];
+        const chunks: Buffer[] = [];
         stream.on('data', (chunk) => chunks.push(chunk));
         stream.on('end', () => resolve(Buffer.concat(chunks)));
         stream.on('error', reject);
@@ -46,7 +46,7 @@ export async function uploadContentToS3(content: string, hashKey: string): Promi
        Bucket: BUCKET_NAME,
        Key: hashKey,
        Body: content,
-       ContentType: 'application/octet-stream', // Adjust as needed
+       ContentType: 'application/zip', // Adjust as needed
        ContentEncoding: 'base64',
    };
 
