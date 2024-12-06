@@ -4,7 +4,7 @@ import { dirname } from 'path';
 import path from 'path';
 import AdmZip from 'adm-zip';
 import * as git from 'isomorphic-git';
-import http from 'isomorphic-git/http/node/index.cjs';
+import http from 'isomorphic-git/http/node';
 import fs from 'fs';
 import logger from './logging.js';
 import axios from 'axios';
@@ -43,6 +43,9 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
 
         if (typeof repository === 'string') {
             // Handle shorthand format like "github:user/repo"
+            if (/^[^/]+\/[^/]+$/.test(repository)) {
+                return `https://github.com/${repository}`;
+            }
             if (repository.startsWith('github:')) {
                 const [owner, repo] = repository.replace('github:', '').split('/');
                 return `https://github.com/${owner}/${repo}`;
@@ -90,6 +93,7 @@ export async function processGithubURL(url: string, version: string): Promise<st
     const tempFetch = path.join(__dirname, 'tmp', 'fetch-' + Date.now());
     fs.mkdirSync(tempDir, { recursive: true });
      try {
+        console.log('before  fetch')
         await git.fetch({
             http,
             fs,
@@ -98,12 +102,15 @@ export async function processGithubURL(url: string, version: string): Promise<st
             ref:  'refs/tags/*',
             depth: 1,
         });
+        console.log('after fetch')
         const tags = await git.listTags({ fs, dir: tempFetch });
+        console.log('after list tags')
 
         if (!tags.includes(version)) {
             logger.error('Invalid version provided');
             return '-1';
         }
+        console.log('after tags');
         await git.clone({
             fs,
             http,
@@ -113,10 +120,12 @@ export async function processGithubURL(url: string, version: string): Promise<st
             singleBranch: true,
             depth: 1,
         });
-
+        console.log('after clone');
 
         const zip = new AdmZip();
+        console.log('before add local folder');
         zip.addLocalFolder(tempDir);
+        console.log('after add local folder');
         logger.info('Base64 Encoded Zip Buffer: ', zip.toBuffer().toString('base64'));
         return zip.toBuffer().toString('base64');
     } catch(error) {
