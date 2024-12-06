@@ -1,5 +1,5 @@
 import fs from 'fs';
-import logger from './logging';
+import logger from './logging.js';
 
 /**
  * Calculates Maintainer score
