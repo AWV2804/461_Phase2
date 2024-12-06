@@ -43,6 +43,9 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
 
         if (typeof repository === 'string') {
             // Handle shorthand format like "github:user/repo"
+            if (/^[^/]+\/[^/]+$/.test(repository)) {
+                return `https://github.com/${repository}`;
+            }
             if (repository.startsWith('github:')) {
                 const [owner, repo] = repository.replace('github:', '').split('/');
                 return `https://github.com/${owner}/${repo}`;
@@ -124,6 +127,7 @@ export async function processGithubURL(url: string, version: string): Promise<st
         });
 
         const zip = new AdmZip();
+        console.log('before add local folder');
         zip.addLocalFolder(tempDir);
         return zip.toBuffer().toString('base64');
     } catch(error) {
