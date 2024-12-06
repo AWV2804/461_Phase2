@@ -42,6 +42,9 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
         let url: URL;
 
         if (typeof repository === 'string') {
+            if (repository.toLowerCase().includes('github') ===  false) {
+                return repository;
+            }
             // Handle shorthand format like "github:user/repo"
             if (repository.startsWith('github:')) {
                 const [owner, repo] = repository.replace('github:', '').split('/');
@@ -63,6 +66,9 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
             url = new URL(repository.replace(/^git@/, 'https://').replace(/^git:\/\//, 'https://'));
         } else if (typeof repository === 'object' && repository.url) {
             // Handle repository object with type and url
+            if (repository.url.toLowerCase().includes('github') ===  false) {
+                return repository.url;
+            }
             url = new URL(repository.url.replace(/^git@/, 'https://').replace(/^git:\/\//, 'https://'));
         } else {
             // Invalid repository format
@@ -318,4 +324,27 @@ export async function createZipFromDir(dir: string) {
     const zip = new AdmZip();
     zip.addLocalFolder(dir);
     return zip.toBuffer();
+}
+
+export async function noRating(url: string) : Promise<string>{
+    const fixed_url: string = url.trim();
+    const formatted_string: string = '{"URL": ' + '"' + fixed_url + '"' + ', ' +
+        '"NetScore": ' + `-1, ` +
+        '"NetScore_Latency": ' + `-1, ` +
+        '"RampUp": ' + `-1, ` +
+        '"RampUp_Latency": ' + `-1, ` +
+        '"Correctness": ' + `-1,` +
+        '"Correctness_Latency": ' + `-1, ` +
+        '"BusFactor": ' + `-1, ` +
+        '"BusFactor_Latency": ' + `-1, ` +
+        '"ResponsiveMaintainer": ' + `-1, ` +
+        '"ResponsiveMaintainer_Latency": ' + `-1, ` +
+        '"License": ' + `-1, ` +
+        '"License_Latency": ' + `-1, ` +
+        '"PullRequestsCodeMetric": ' + `-1, ` +
+        '"PullRequestsCodeMetric_Latency": ' + `-1, ` +
+        '"DependencyPinning": ' + `-1, ` +
+        '"DependencyPinning_Latency": ' + `-1}\n`;
+
+    return formatted_string
 }
