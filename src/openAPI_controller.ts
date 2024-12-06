@@ -561,9 +561,16 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
         console.log('Package Name:', packageName);
         console.log('Repository URL:', url);
 
-        const [package_rating, package_net] = await rate(url);
+        let package_rating;
+        let package_net;
+        if (url.toLowerCase().includes('github') === false) {
+            package_rating = util.noRating(url);
+            package_net = -1;
+        } else {
+            [package_rating, package_net] = await rate(url);
+        }
 
-        if (package_net < 0.5) {
+        if (package_net < 0.5 && url.toLowerCase().includes('github') === false) {
             logger.info(`Package ${packageName} rating too low: ${package_rating}`);
             return res.status(424).send('Package rating too low');
         }
@@ -1000,6 +1007,27 @@ app.post('/package', async (req, res) => {
                         JSProgram: JSProgram || '',
                     },
                 };
+                if (repoUrl.toLowerCase().includes('github')  === false) {
+                    const badScore = await util.noRating(repoUrl);
+                    const result = await db.addNewPackage(packageName, URL, Package, packageId, badScore, version, -1, "Content", readMeContent, secret, userGroup);
+                    if(result[0] == false) {
+                        logger.error(`Error uploading package:`, packageName);
+                        return res.status(500).send('Error uploading package');
+                    }
+                    try {
+                        await s3.uploadContentToS3(base64Zip, packageId);
+                    } catch (e) {
+                        logger.error('Error uploading content to S3:', e);
+                        const removed = await db.removePackageByNameOrHash(packageId, Package);
+                        if (removed == false) {
+                            logger.error('Error removing package from mongo');
+                        } else logger.error('Package removed from mongo');
+                        return res.status(500).send('Error uploading content to S3');
+                    }
+                    logger.info(`Non-Github URL package uploaded`);
+
+                    return res.status(201).send(jsonResponse);  
+                }
                 
                 const [package_rating, package_net] = await rate(repoUrl);
                 if (package_net >= 0.5) {

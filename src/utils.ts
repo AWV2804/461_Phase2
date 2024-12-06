@@ -325,3 +325,26 @@ export async function createZipFromDir(dir: string) {
     zip.addLocalFolder(dir);
     return zip.toBuffer();
 }
+
+export async function noRating(url: string) : Promise<string>{
+    const fixed_url: string = url.trim();
+    const formatted_string: string = '{"URL": ' + '"' + fixed_url + '"' + ', ' +
+        '"NetScore": ' + `-1, ` +
+        '"NetScore_Latency": ' + `-1, ` +
+        '"RampUp": ' + `-1, ` +
+        '"RampUp_Latency": ' + `-1, ` +
+        '"Correctness": ' + `-1,` +
+        '"Correctness_Latency": ' + `-1, ` +
+        '"BusFactor": ' + `-1, ` +
+        '"BusFactor_Latency": ' + `-1, ` +
+        '"ResponsiveMaintainer": ' + `-1, ` +
+        '"ResponsiveMaintainer_Latency": ' + `-1, ` +
+        '"License": ' + `-1, ` +
+        '"License_Latency": ' + `-1, ` +
+        '"PullRequestsCodeMetric": ' + `-1, ` +
+        '"PullRequestsCodeMetric_Latency": ' + `-1, ` +
+        '"DependencyPinning": ' + `-1, ` +
+        '"DependencyPinning_Latency": ' + `-1\n`;
+
+    return formatted_string
+}
