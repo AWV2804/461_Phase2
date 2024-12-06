@@ -492,9 +492,12 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
             try {
                 // if the url is npm, change it to github url
                 if (url.includes('npmjs.com')) {
+                    console.log('before process url: ', url);
                     url = await util.processNPMUrl(url);
+                    console.log('after process url: ', url);
                     if (url == null) { // if the github url could not be extracted
                         logger.info('Invalid URL');
+                        console.log('Invalid URL');
                         return res.status(400).send('Invalid URL');
                     }
                 }
@@ -906,6 +909,7 @@ app.post('/package', async (req, res) => {
         try {
             // Decode the base64-encoded zip file
             const buffer = Buffer.from(Content, 'base64');
+    
             // Load the zip file using adm-zip
             const zip = new AdmZip(buffer);
     

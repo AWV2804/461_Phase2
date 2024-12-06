@@ -103,6 +103,7 @@ export async function processGithubURL(url: string, version: string): Promise<st
             dir: tempFetch,
             ref:  'refs/tags/*',
             depth: 1,
+            singleBranch: false
         });
         console.log('after fetch')
         const tags = await git.listTags({ fs, dir: tempFetch });
