@@ -43,14 +43,15 @@ jobs:
         run: |
             npm run bstart > bstart.log 2>&1 &
       # Step 5a: Install wait-on
-      - name: Install wait-on
-        run: npm install -g wait-on
+      - name: Install wait-on, newman
+        run: npm install -g wait-on newman
 
       # Step 5b: Wait for backend to be ready
       - name: Wait for Backend Server
         run: |
             echo "Waiting for backend to start..."
             wait-on http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs && echo "Backend is up!"
+
       
       # Step 5b: Wait for frontend to be ready
       - name: Wait for Frontend Server
@@ -61,6 +62,11 @@ jobs:
       # Step 6: Run tests to execute the test suite
       - name: Run Test Suite
         run: ./run test
+
+      - name: Run Postman Tests
+        run: |
+          newman run test/postman_testing/postmane2e.postman_collection.json \
+          --env-var url=http://localhost:${{env.REACT_APP_BACKEND_PORT}} \
 
       # Step 7: Upload the logs
       - name: Upload bstart Logs
