@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 const rootName = 'ece30861defaultadminuser'
 import logger from './logging.js';
 import dotenv from 'dotenv';
+import { AutoEncryptionLoggerLevel } from 'mongodb';
 
 dotenv.config();
 // Define a schema
@@ -122,14 +123,16 @@ export async function getPackagesByNameOrHash(identifier: string, Package: mongo
     });
   
       if (packages.length === 0) {
-        console.log('No packages found with the name or hash:', identifier);
+        logger.error('No packages found with the name or hash:', identifier);
+        // console.log('No packages found with the name or hash:', identifier);
         return [false, [-1]];
       }
   
     //   console.log('Packages found:', packages);
       return [true, packages];
     } catch (error) {
-      console.error('Error fetching packages:', error);
+      logger.error('Error fetching packages:', error);
+    //   console.error('Error fetching packages:', error);
       return [false, error];
     }
 }
