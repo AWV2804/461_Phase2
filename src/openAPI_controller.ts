@@ -492,25 +492,18 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
             try {
                 // if the url is npm, change it to github url
                 if (url.includes('npmjs.com')) {
-                    console.log('before process url: ', url);
                     url = await util.processNPMUrl(url);
-                    console.log('after process url: ', url);
                     if (url == null) { // if the github url could not be extracted
                         logger.info('Invalid URL');
-                        console.log('Invalid URL');
                         return res.status(400).send('Invalid URL');
                     }
                 }
 
                 // Process the URL
-                console.log('Processing URL:', url);
                 content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
                     return res.status(500).send('Error processing package content from URL');
-                } else if (content == '-1') {
-                    logger.info('No such version exists (URL update)');
-                    return res.status(404).send('No such version exists');
                 }
             } catch(error) {
                 logger.error('Error processing package content from URL:', error);
