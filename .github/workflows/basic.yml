@@ -70,7 +70,7 @@ jobs:
         run: |
           npx newman run test/postman_testing/postmane2e.postman_collection.json \
             -e test/postman_testing/461.postman_environment.json \
-            --env-var "url=http://localhost:${{env.REACT_APP_BACKEND_PORT}}"
+            --reporter-cli verbose
 
       # Step 7: Upload the logs
       - name: Upload bstart Logs
