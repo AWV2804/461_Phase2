@@ -84,8 +84,8 @@ const monkeyBusiness = '\"bearer 66abf860f10edcdd512e9f3f9fdc8af1bdc676503922312
 // const Package = packageDB[1].model('Package', db.packageSchema);
 // const UserModel = userDB[1].model('User', db.userSchema);
 export const app = express();
-let packageDB;
-let userDB;
+export let packageDB;
+export let userDB;
 let Package;
 let UserModel;
 function initializeDatabases() {
@@ -176,16 +176,10 @@ app.delete('/reset', async (req, res) => {
     }
     try {
         logger.info('Resetting registry...');
-        let numPacks = 0;
-        let numUsers = 0;
-        for (const collectionName in packageDB[1].collections) {
-            console.log(collectionName);
-            numPacks++;
-        }
-        for (const collectionName in userDB[1].collections) {
-            console.log(collectionName);
-            numUsers++;
-        }
+        console.log(Package);
+        console.log(UserModel);
+        const numPacks = await Package.countDocuments();
+        const numUsers = await UserModel.countDocuments();
         console.log(numPacks);
         console.log(numUsers);
         if (numPacks == 0 && numUsers == 1) {
@@ -204,6 +198,7 @@ app.delete('/reset', async (req, res) => {
         } else {
             result2 = [true, 'No collections to delete'];
         }
+        console.log(`Registry values: ${result}, ${result2}`);
         logger.info(`Registry values: ${result}, ${result2}`);
         if (result[0] == true && result2[0] == true) {
             logger.info('Registry is reset.');
@@ -1314,7 +1309,7 @@ app.get('/package/:id/cost', async (req, res) => {
     let isadmin;
     let usergroup;
     // Authentication Check
-    if(!token || token == '' || token == null || token.trim() == '') {
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -1380,7 +1375,6 @@ app.get('/package/:id/cost', async (req, res) => {
                 totalCost: standaloneCost,
             },
         };
-
         if (dependency && dependencies.length > 0) {
             for (const depId of dependencies) {
                 try {
@@ -1400,19 +1394,16 @@ app.get('/package/:id/cost', async (req, res) => {
                     const depPackageJsonContent = depPackageJsonEntry.getData().toString('utf8');
                     const depPackageJson: util.PackageJson = JSON.parse(depPackageJsonContent);
                     const depStandaloneCost = await util.calculatePackageSize(depId);
-
                     packageCost[depId] = {
                         standaloneCost: depStandaloneCost,
                         totalCost: depStandaloneCost,
                     };
-
                     packageCost[packageId].totalCost += depStandaloneCost;
                 } catch (depError) {
                     logger.error(`Error processing dependency ${depId}:`, depError);
                 }
             }
         }
-
         return res.status(200).json(packageCost);
     } catch (error: any) {
         if (error.name === 'NoSuchKey' || error.message.includes('NotFound')) { // AWS S3 specific error for missing objects
@@ -1545,7 +1536,7 @@ app.post('/packages', async (req, res) => {
                 logger.error('Invalid PackageQuery format.');
                 return res.status(400).send("There are missing field(s) in the PackageQuery or it is formed improperly, or is invalid.");
             }
-
+            
             // Ensure Version is not a combination of different possibilities
             if (query.Version) {
                 const patternCount = versionPatterns.reduce((count, pattern) => {
@@ -1589,7 +1580,7 @@ app.post('/packages', async (req, res) => {
             if (paginatedPackages.length > limit) {
                 return res.status(413).send('Too many packages returned.');
             }
-
+            console.log(paginatedPackages);
             const formattedPackages = paginatedPackages.map(pkg => ({
                 Name: pkg.name,
                 Version: pkg.version,
@@ -1627,13 +1618,8 @@ app.post('/packages', async (req, res) => {
  *         description: The system encountered an error while retrieving the student's track information.
  */
 app.get('/tracks', async (req, res) => {
-    try {
-        const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
-        return res.status(200).json({ plannedTracks });
-    } catch (error) {
-        console.error('Error retrieving tracks:', error);
-        return res.status(500).json({ error: 'The system encountered an error while retrieving the student\'s track information.' });
-    }
+    const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
+    return res.status(200).json({ plannedTracks });
 });
 /*------------------ Extra APIs not in spec ------------------*/
 
