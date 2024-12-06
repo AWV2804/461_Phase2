@@ -9,3 +9,5 @@ build/
 ece461_fall_2024_openapi_spec.yaml
 *.png
 src/tmp/*
+contributors.json
+package-lock.json
