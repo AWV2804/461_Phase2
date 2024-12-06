@@ -57,7 +57,7 @@ export async function addNewPackage(name: String, url: String, Package: mongoose
 
     try {
         const savedPackage = await newPackage.save();
-        logger.info('Package saved:', savedPackage);
+        logger.info('Package saved:', savedPackage.name);
         return [true, savedPackage];
     } catch (error) {
         logger.debug('Error saving package:', error);
@@ -126,7 +126,7 @@ export async function getPackagesByNameOrHash(identifier: string, Package: mongo
         return [false, [-1]];
       }
   
-      console.log('Packages found:', packages);
+    //   console.log('Packages found:', packages);
       return [true, packages];
     } catch (error) {
       console.error('Error fetching packages:', error);

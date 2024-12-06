@@ -141,6 +141,7 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
 
             // Check documentation quality
             rampUpScore = await checkDocumentationQuality(repoPath);
+            logger.debug(`Ramp-Up Score (GitHub): ${rampUpScore}`);
             //console.log(`Ramp-Up Score (GitHub): ${rampUpScore}`);
 
         // Handle npm URLs
@@ -157,11 +158,13 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
                 // const gitHandler = new gitAPIHandler(npmMetadata.gitUrl);
                 // await gitHandler.cloneRepository(repoPath);
                 rampUpScore = await checkDocumentationQuality(repoPath);
+                
             } else {
                 // If no GitHub repo is available, base the score on npm metadata (e.g., maintainers, license)
                 //console.log('No GitHub repository found, scoring based on npm metadata...');
                 rampUpScore = npmMetadata.maintainers.length / 10; // Example score based on maintainers
             }
+            logger.debug(`Ramp-Up Score (NPM): ${rampUpScore}`);
             //console.log(`Ramp-Up Score (NPM): ${rampUpScore}`);
         } else {
             console.error('Unsupported URL type. Please provide a GitHub or npm URL.');
@@ -175,7 +178,7 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
         // Clean up after analysis
         //await deleteDirectory(repoPath);
         //console.log(`Repository directory cleaned up: ${repoPath}`);
-
+        logger.debug(`Ramp-Up Score: ${rampUpScore}`);
         return rampUpScore;
     } catch (error) {
         console.error('Error in ramp-up score calculation:', error);

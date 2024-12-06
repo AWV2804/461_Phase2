@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      LOG_LEVEL: 1                  # Set log level to 0
+      LOG_LEVEL: 2                 # Set log level to 0
       LOG_FILE: "./logfile.txt"      # Define log file path
       GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       PORT: 8080
@@ -100,5 +100,5 @@ jobs:
         echo "Starting backend server in the background..." >> $LOG_FILE
         mkdir public
         mv index.html public/index.html
-        nohup npm run start:dev > $LOG_FILE 2>&1 &
+        nohup npm run start:dev > console.txt 2>&1 &
         EOF

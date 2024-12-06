@@ -235,6 +235,7 @@ app.post('/package/byRegEx', async (req, res) => {
             logger.error('You do not have the correct permissions to reset the registry.');
             return res.status(403).send('You do not have the correct permissions to reset the registry.')
         }
+        logger.info('Token verified');
     } catch (error) {
         logger.error('Error verifying token:', error);
         return res.status(403).send('Invalid or expired token');
@@ -256,6 +257,7 @@ app.post('/package/byRegEx', async (req, res) => {
         Name: pkg.name,
         ID: pkg.packageId, // Use packageId if available, fallback to id
     }));
+    logger.info('Packages found:', formattedPackages);
     return res.status(200).json(formattedPackages);
 });
 

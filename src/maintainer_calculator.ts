@@ -1,4 +1,5 @@
 import fs from 'fs';
+import logger from './logging';
 
 /**
  * Calculates Maintainer score
@@ -20,6 +21,7 @@ export function maintainer_net(contributors: any, issues: any, pullRequests: any
     // console.log(`Open/Closed Ratio: ${openClosedRatio}`);
     // console.log(`Active Maintainers: ${activeMaintainers}`);
     const responsiveMaintainerScore = (0.4 * responseTime) + (0.3 * issueClosureTime) + (0.2 * openClosedRatio) + (0.1 * activeMaintainers);
+    logger.debug(`Responsive Maintainer Score: ${responsiveMaintainerScore}, Response Time: ${responseTime}, Issue Closure Time: ${issueClosureTime}, Open/Closed Ratio: ${openClosedRatio}, Active Maintainers: ${activeMaintainers}`);
     // console.log(`Responsive Maintainer Score: ${responsiveMaintainerScore}`);
     return responsiveMaintainerScore;
 }
