@@ -127,7 +127,6 @@ export async function processGithubURL(url: string, version: string): Promise<st
         });
 
         const zip = new AdmZip();
-        console.log('before add local folder');
         zip.addLocalFolder(tempDir);
         return zip.toBuffer().toString('base64');
     } catch(error) {
