@@ -165,7 +165,7 @@ export async function findPackageByRegEx(regex: string, Package: mongoose.Model<
 export function connectToMongoDB(database: string) {
     try {
         // Replace with your actual MongoDB URI
-        const mongoURI = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.9gpef.mongodb.net/${database}?retryWrites=true&w=majority&appName=Cluster0`;
+         const mongoURI = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.9gpef.mongodb.net/${database}?retryWrites=true&w=majority&appName=Cluster0`;
         // Connect to the MongoDB cluster
         const db = mongoose.createConnection(mongoURI);
         // if(db == null) {
