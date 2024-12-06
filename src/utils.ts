@@ -344,7 +344,7 @@ export async function noRating(url: string) : Promise<string>{
         '"PullRequestsCodeMetric": ' + `-1, ` +
         '"PullRequestsCodeMetric_Latency": ' + `-1, ` +
         '"DependencyPinning": ' + `-1, ` +
-        '"DependencyPinning_Latency": ' + `-1\n`;
+        '"DependencyPinning_Latency": ' + `-1}\n`;
 
     return formatted_string
 }

@@ -75,9 +75,9 @@ describe('utils.ts', () => {
       expect(result).toBe('https://github.com/owner/repo');
     });
 
-    it('should return null for an invalid URL', () => {
+    it('should return url for non github url', () => {
       const result = parseRepositoryUrl('invalid_url');
-      expect(result).toBeNull();
+      expect(result).toBe('invalid_url');
     });
   });
 

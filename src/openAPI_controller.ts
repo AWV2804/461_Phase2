@@ -340,6 +340,7 @@ app.get('/package/:id/rate', async (req, res) => {
         return res.status(500).send(`Error retrieving package: ${packageInfo[1]}`);
     }
     const pkg = packageInfo[1] as any[];
+    console.log(pkg[0]["score"]);
     const scoreObject = JSON.parse(pkg[0]["score"]);
     const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
     if(nullFields.length > 0) {
