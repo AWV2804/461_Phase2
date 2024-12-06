@@ -500,10 +500,14 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
                 }
 
                 // Process the URL
+                console.log('Processing URL:', url);
                 content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
                     return res.status(500).send('Error processing package content from URL');
+                } else if (content == '-1') {
+                    logger.info('No such version exists (URL update)');
+                    return res.status(404).send('No such version exists');
                 }
             } catch(error) {
                 logger.error('Error processing package content from URL:', error);

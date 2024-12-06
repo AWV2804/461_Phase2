@@ -95,6 +95,24 @@ export async function processGithubURL(url: string, version: string): Promise<st
     const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
     fs.mkdirSync(tempDir, { recursive: true });
      try {
+        console.log('before  fetch')
+        await git.fetch({
+            http,
+            fs,
+            url,
+            dir: tempFetch,
+            ref:  'refs/tags/*',
+            depth: 1,
+        });
+        console.log('after fetch')
+        const tags = await git.listTags({ fs, dir: tempFetch });
+        console.log('after list tags')
+
+        if (!tags.includes(version)) {
+            logger.error('Invalid version provided');
+            return '-1';
+        }
+        console.log('after tags');
         await git.clone({
             fs,
             http,
@@ -129,6 +147,8 @@ export async function processGithubURL(url: string, version: string): Promise<st
         const zip = new AdmZip();
         console.log('before add local folder');
         zip.addLocalFolder(tempDir);
+        console.log('after add local folder');
+        logger.info('Base64 Encoded Zip Buffer: ', zip.toBuffer().toString('base64'));
         return zip.toBuffer().toString('base64');
     } catch(error) {
         logger.error('Error processing package content from URL:', error);
