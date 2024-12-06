@@ -909,7 +909,6 @@ app.post('/package', async (req, res) => {
         try {
             // Decode the base64-encoded zip file
             const buffer = Buffer.from(Content, 'base64');
-    
             // Load the zip file using adm-zip
             const zip = new AdmZip(buffer);
     
