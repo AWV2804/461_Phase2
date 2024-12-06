@@ -1,6 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
-
 const s3 = new S3Client({ region: 'us-east-1' });
 const BUCKET_NAME = "ece461-zipped-packages";
 
