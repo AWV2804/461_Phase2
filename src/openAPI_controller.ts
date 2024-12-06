@@ -1893,10 +1893,8 @@ app.post('/packages', async (req, res) => {
                 const packages: any[] = packagesOrError as any[];
                 fetchedPackages = fetchedPackages.concat(packages);
             }
-
             // Remove duplicates based on ID
             const uniquePackages = Array.from(new Map(fetchedPackages.map(pkg => [pkg.packageId, pkg])).values());
-
             // Implement pagination
             const start = offset ? parseInt(offset, 10) : 0;
             const paginatedPackages = uniquePackages.slice(start, start + limit + 1);
