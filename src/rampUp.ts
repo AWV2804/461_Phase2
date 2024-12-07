@@ -31,6 +31,23 @@ async function deleteDirectory(repoPath: string): Promise<void> {
 }
 
 
+/**
+ * Cleans and formats the input text by performing several transformations:
+ * - Ensures certain HTML tags are preceded by a full stop.
+ * - Strips all HTML tags.
+ * - Replaces commas, hyphens, and other specified characters with spaces.
+ * - Unifies sentence terminators to periods.
+ * - Strips leading and trailing whitespace.
+ * - Removes periods in email addresses to keep them as one word.
+ * - Replaces new lines with periods.
+ * - Removes duplicated sentence terminators.
+ * - Pads sentence terminators with a space.
+ * - Removes multiple spaces.
+ * - Ensures the text ends with a period.
+ *
+ * @param {string} text - The input text to be cleaned and formatted.
+ * @returns {string} - The cleaned and formatted text.
+ */
 function cleanText(text) {
     // all these tags should be preceeded by a full stop. 
     var fullStopTags = ['li', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dd'];
@@ -57,6 +74,16 @@ function cleanText(text) {
     return text;
 }
 
+/**
+ * Counts the number of sentences in a given text.
+ *
+ * This function takes a string of text, cleans it, and then counts the number of
+ * sentence-ending punctuation marks (., !, or ?). If the text is empty or null,
+ * it returns 1.
+ *
+ * @param {string} text - The text to be analyzed.
+ * @returns {number} The number of sentences in the text.
+ */
 function wordCount(text) {
     text = text ? cleanText(text) : text;
     return text.replace(/[^\.!?]/g, '').length || 1;
@@ -67,12 +94,28 @@ function sentenceCount(text) {
     return text.split(/[\.!\?]+/).length || 1;
 }
 
+/**
+ * Calculates the average number of words per sentence in a given text.
+ *
+ * @param {string} text - The text to analyze.
+ * @returns {number} The average number of words per sentence.
+ */
 function averageWordsPerSentence(text) {
     text = text ? cleanText(text) : text;
     console.log(wordCount(text), sentenceCount(text));
     return wordCount(text) / sentenceCount(text);
 }
 
+/**
+ * Counts the number of syllables in a given word.
+ *
+ * This function takes a word as input, processes it to remove non-alphabetic characters,
+ * and then calculates the number of syllables based on various linguistic rules and patterns.
+ * It also accounts for certain problem words that do not follow standard syllable rules.
+ *
+ * @param {string} word - The word for which to count the syllables.
+ * @returns {number} The number of syllables in the word. Returns at least 1.
+ */
 function syllablesCount(word) {
     var syllableCount = 0,
 			prefixSuffixCount = 0,

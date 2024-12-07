@@ -68,6 +68,13 @@ export async function addNewPackage(name: String, url: String, Package: mongoose
 
 
 
+/**
+ * Removes a package from the database by its name or hash identifier.
+ *
+ * @param identifier - The name or hash identifier of the package to be removed.
+ * @param Package - The Mongoose model representing the package collection.
+ * @returns A promise that resolves to `true` if the package was successfully removed, or `false` if an error occurred.
+ */
 export async function removePackageByNameOrHash(identifier: string, Package: mongoose.Model<any>) : Promise<boolean> {
     try {
         const result = await Package.deleteOne({ $or : [{ name: identifier }, { packageId: identifier }] });
@@ -138,6 +145,14 @@ export async function getPackagesByNameOrHash(identifier: string, Package: mongo
 }
   
 
+/**
+ * Finds packages in the database that match the given regular expression in either the 'name' or 'README' fields.
+ *
+ * @param regex - The regular expression string to search for in the 'name' and 'README' fields.
+ * @param Package - The Mongoose model representing the package collection.
+ * @returns A promise that resolves to a tuple. The first element is a boolean indicating success or failure.
+ *          The second element is either the array of matching packages (on success) or the error object (on failure).
+ */
 export async function findPackageByRegEx(regex: string, Package: mongoose.Model<any>) {
     try {
         // Apply the regex to both 'name' and 'README' fields
@@ -217,10 +232,6 @@ export async function deleteDB(db: mongoose.Connection) {
         logger.debug('Error deleting database:', error);
         return [false, error];
     }
-    // } finally {
-    //     await mongoose.disconnect();
-    //     console.log('Disconnected from MongoDB');
-    // }
 }
 
 /**
@@ -242,6 +253,16 @@ export async function deleteUsersExcept(User: mongoose.Model<any>): Promise<[boo
     }
 }
 
+/**
+ * Adds a new user to the database.
+ *
+ * @param {String} username - The username of the new user.
+ * @param {String} userHash - The hashed password of the new user.
+ * @param {Boolean} isAdmin - Indicates if the new user has admin privileges.
+ * @param {String} userGroup - The group to which the new user belongs.
+ * @param {mongoose.Model<any>} User - The Mongoose model for the user.
+ * @returns {Promise<[boolean, any]>} A promise that resolves to an array where the first element is a boolean indicating success, and the second element is either the result or an error.
+ */
 export async function addUser(username: String, userHash: String, isAdmin: Boolean, userGroup: String, User: mongoose.Model<any>) {
     try {
         const newUser = new User({
@@ -264,6 +285,16 @@ export async function addUser(username: String, userHash: String, isAdmin: Boole
     }
 }
 
+/**
+ * Removes a user by their username from the database.
+ *
+ * @param username - The username of the user to be removed.
+ * @param User - The Mongoose model representing the user collection.
+ * @returns A promise that resolves to a tuple. The first element is a boolean indicating success or failure.
+ *          The second element is either the result of the deletion operation or an error.
+ *
+ * @throws Will throw an error if there is an issue with the database operation.
+ */
 export async function removeUserByName(username: string, User: mongoose.Model<any>) {
     try {
         const user = await getUserByName(username, User);
@@ -280,6 +311,12 @@ export async function removeUserByName(username: string, User: mongoose.Model<an
     }
 }
 
+/**
+ * Fetches all users from the database.
+ *
+ * @param {mongoose.Model<any>} User - The Mongoose model representing the User collection.
+ * @returns {Promise<[boolean, any[] | Error]>} A promise that resolves to a tuple where the first element is a boolean indicating success, and the second element is either an array of users or an error object.
+ */
 export async function getAllUsers(User: mongoose.Model<any>) {
     try {
         const users = await User.find();
@@ -291,6 +328,16 @@ export async function getAllUsers(User: mongoose.Model<any>) {
     }
 }
 
+/**
+ * Retrieves a user from the database by their hash.
+ *
+ * @param userHash - The hash of the user to retrieve.
+ * @param User - The Mongoose model to use for querying the database.
+ * @returns A promise that resolves to a tuple. The first element is a boolean indicating success or failure.
+ *          The second element is either the user object if found, or an error object if not found or if an error occurred.
+ *
+ * @throws Will throw an error if the database query fails.
+ */
 export async function getUserByHash(userHash: string, User: mongoose.Model<any>) {
     try {
         const user = await User.findOne({ userHash });
@@ -306,6 +353,16 @@ export async function getUserByHash(userHash: string, User: mongoose.Model<any>)
     }
 }
 
+/**
+ * Retrieves a user by their username from the database.
+ *
+ * @param {string} username - The username of the user to retrieve.
+ * @param {mongoose.Model<any>} User - The Mongoose model to use for querying the database.
+ * @returns {Promise<[boolean, any]>} A promise that resolves to a tuple where the first element is a boolean indicating success,
+ * and the second element is either the user object or an error.
+ *
+ * @throws {Error} If there is an error during the database query.
+ */
 export async function getUserByName(username: String, User: mongoose.Model<any>) {
     try {
         const user = await User.findOne({ username });
@@ -320,25 +377,3 @@ export async function getUserByName(username: String, User: mongoose.Model<any>)
         return [false, error];
     }
 }
-
-/**
- * Test function to check functionality
- */
-// async function run() {
-//     await connectToMongoDB('Users');
-//     await addUser('Annan', 'x', 1);
-//     const x = await getAllUsers();
-//     logger.info(x);
-//     logger.info();
-//     // const y = await getUserByHash(rootHash);
-//     // logger.info(y); 
-//     // logger.info();
-//     await addUser('Annan', 'y', 1);
-//     // const z = await removeUserByHash('y');
-//     // logger.info(z);
-//     // logger.info();
-//     const d = await deleteUsersExcept();
-//     logger.info(d);
-//     logger.info();
-//     await disconnectMongoDB();
-// }

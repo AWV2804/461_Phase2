@@ -235,6 +235,13 @@ export async function getPackageDependencies(hashKey: string): Promise<string[]>
         throw new Error('Failed to retrieve package dependencies.');
     }
 }
+/**
+ * Searches for a README file in the specified directory and reads its content.
+ *
+ * @param possibleReadmeFiles - An array of possible README file names to search for.
+ * @param dirPath - The directory path where the README files are located.
+ * @returns The content of the first found README file as a string, or an empty string if no README file is found.
+ */
 export function findAndReadReadme(possibleReadmeFiles: string[], dirPath: string): String {
     for (const fileName of possibleReadmeFiles) {
         const filePath = path.join(dirPath, fileName);
@@ -246,6 +253,13 @@ export function findAndReadReadme(possibleReadmeFiles: string[], dirPath: string
     return '';
 }
 
+/**
+ * Generates a JSON Web Token (JWT) with a custom payload.
+ *
+ * @param {boolean} isAdmin - Indicates if the user has admin privileges.
+ * @param {string} userGroup - The group to which the user belongs.
+ * @returns {string} - The generated JWT as a string.
+ */
 export function generateToken(isAdmin: boolean, userGroup: string): string {
     const payload: CustomPayload = {
         usageCount: 0,
@@ -256,6 +270,20 @@ export function generateToken(isAdmin: boolean, userGroup: string): string {
     return jwt.sign(payload, SECRET_KEY);
 }
 
+/**
+ * Verifies a JWT token, increments its usage count, and returns an updated token along with user information.
+ *
+ * @param token - The JWT token to verify.
+ * @returns An object containing the updated token, a boolean indicating if the user is an admin, and the user's group.
+ *          If the token is invalid or expired, the updatedToken will be an Error object.
+ *
+ * @remarks
+ * The token is expected to have a 'Bearer ' prefix which is removed before verification.
+ * If the token's usage count is 1000 or more, it is considered expired.
+ *
+ * @throws {jwt.TokenExpiredError} If the token has expired.
+ * @throws {Error} If the token is invalid.
+ */
 export function verifyToken(token: string): { updatedToken: string | Error; isAdmin: boolean | null; userGroup: string | null } {
     try {
         token = token.slice(7);
@@ -280,7 +308,16 @@ export function verifyToken(token: string): { updatedToken: string | Error; isAd
     }
 }
 
-// Function to extract files from ZIP
+/**
+ * Extracts files from a zip archive or a directory to a specified output directory.
+ *
+ * @param input - The input source, which can be an instance of `AdmZip` or a string representing the path to a directory.
+ * @param outputDir - The path to the output directory where the files will be extracted.
+ *
+ * @returns A promise that resolves when the extraction is complete.
+ *
+ * @throws Will throw an error if the input is neither an instance of `AdmZip` nor a string.
+ */
 export async function extractFiles(input: AdmZip | string, outputDir: string) {
     if (input instanceof AdmZip) {
         input.getEntries().forEach((zipEntry) => {
@@ -306,7 +343,16 @@ export async function extractFiles(input: AdmZip | string, outputDir: string) {
     }
 }
 
-// Function to perform tree shaking with esbuild
+/**
+ * Tree shakes and bundles a package located in the specified input directory.
+ * 
+ * This function uses esbuild to perform tree shaking, bundling, and minification
+ * on the package found in the input directory. The output is written back to the
+ * same directory.
+ * 
+ * @param inputDir - The directory containing the package to be tree shaken and bundled.
+ * @returns A promise that resolves when the build process is complete.
+ */
 export async function treeShakePackage(inputDir: string) {
     await esbuild.build({
         entryPoints: [inputDir], // Replace with correct entry file
@@ -319,13 +365,24 @@ export async function treeShakePackage(inputDir: string) {
     });
 }
 
-// Function to create a ZIP file from a directory
+/**
+ * Creates a ZIP archive from the specified directory.
+ *
+ * @param dir - The path to the directory to be zipped.
+ * @returns A promise that resolves to a buffer containing the ZIP archive.
+ */
 export async function createZipFromDir(dir: string) {
     const zip = new AdmZip();
     zip.addLocalFolder(dir);
     return zip.toBuffer();
 }
 
+/**
+ * Generates a JSON string with a fixed URL and default ratings set to -1.
+ *
+ * @param {string} url - The URL to be included in the JSON string.
+ * @returns {Promise<string>} A promise that resolves to a formatted JSON string with the given URL and default ratings.
+ */
 export async function noRating(url: string) : Promise<string>{
     const fixed_url: string = url.trim();
     const formatted_string: string = '{"URL": ' + '"' + fixed_url + '"' + ', ' +

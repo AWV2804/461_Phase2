@@ -25,6 +25,34 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+/**
+ * AuthProvider component that provides authentication context to its children.
+ * 
+ * @param {AuthProviderProps} props - The props for the AuthProvider component.
+ * @param {React.ReactNode} props.children - The child components that will have access to the authentication context.
+ * 
+ * @returns {JSX.Element} The AuthProvider component with authentication context.
+ * 
+ * @remarks
+ * This component uses React's Context API to provide authentication state and functions to its children.
+ * 
+ * @example
+ * ```tsx
+ * <AuthProvider>
+ *   <YourComponent />
+ * </AuthProvider>
+ * ```
+ * 
+ * @context
+ * The context value provided includes:
+ * - `isLoggedIn` (boolean): Indicates if the user is logged in.
+ * - `isAdmin` (boolean): Indicates if the user is an admin.
+ * - `username` (string | null): The username of the logged-in user.
+ * - `userGroup` (string | null): The group of the logged-in user.
+ * - `x_authorization` (string | null): The authorization token of the logged-in user.
+ * - `login` (function): Function to log in a user.
+ * - `logout` (function): Function to log out a user.
+ */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);

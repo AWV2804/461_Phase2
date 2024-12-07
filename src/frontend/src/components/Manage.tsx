@@ -4,6 +4,39 @@ import { AuthContext } from '../AuthContext.js';
 import { useNavigate } from 'react-router-dom';
 import './Styling/Manage.css';
 
+/**
+ * Manage component allows an admin to delete any user account or a regular user to delete their own account.
+ * 
+ * @component
+ * @returns {JSX.Element} The rendered component.
+ * 
+ * @example
+ * // Usage example
+ * <Manage />
+ * 
+ * @remarks
+ * - Admins can delete any user account by specifying the username.
+ * - Regular users can only delete their own account.
+ * - After a successful deletion, admins will see a success message and the input field will be cleared.
+ * - Regular users will be logged out and redirected to the login page after their account is deleted.
+ * 
+ * @function
+ * @name constructBackendUrl
+ * @param {string} path - The path to append to the backend URL.
+ * @returns {string} The constructed backend URL.
+ * 
+ * @function
+ * @name handleDelete
+ * @async
+ * @description Handles the deletion of a user account. Prompts for confirmation before proceeding.
+ * 
+ * @context {AuthContext} AuthContext - Provides authentication-related data and functions.
+ * @state {string} targetUsername - The username of the account to be deleted (for admins).
+ * @state {function} setTargetUsername - Function to update the targetUsername state.
+ * @hook {function} useNavigate - Hook to navigate programmatically.
+ * 
+ * @throws Will alert an error message if the deletion fails or an error occurs during the process.
+ */
 const Manage: React.FC = () => {
   const { isAdmin, username, x_authorization, logout } = useContext(AuthContext);
   const [targetUsername, setTargetUsername] = useState('');

@@ -1,5 +1,19 @@
 import logger from './logging.js'
 
+/**
+ * Calculates the correctness score based on the ratio of closed issues to total issues.
+ * 
+ * @param issues - An array of all issues.
+ * @param closedIssues - An array of closed issues.
+ * @returns A promise that resolves to the correctness score, which is a number between 0 and 1.
+ * 
+ * The score is determined as follows:
+ * - If there are no issues, the score is 1.
+ * - If the ratio of closed issues to total issues is less than 0.1, the score is 0.
+ * - If the ratio is between 0.1 and 0.4, the score is 0.4.
+ * - If the ratio is between 0.4 and 0.7, the score is 0.7.
+ * - If the ratio is 0.7 or higher, the score is 1.
+ */
 export async function calculateCorrectnessScore( issues: any[], closedIssues: any[]): Promise<number> {
     if (issues.length == 0) {
         logger.debug('Total issues count is zero, returning score as 1.');

@@ -3,6 +3,40 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../AuthContext.js';
 import './Styling/Upload.css';
 
+/**
+ * Upload component allows users to upload or ingest a new package by providing
+ * necessary details such as name, content, URL, debloat option, and a JavaScript program.
+ * 
+ * @component
+ * @example
+ * return (
+ *   <Upload />
+ * )
+ * 
+ * @returns {JSX.Element} The rendered Upload component.
+ * 
+ * @remarks
+ * - The component uses `AuthContext` to get the authorization token.
+ * - Either 'Content' or 'URL' must be set, but not both.
+ * - The backend URL is constructed using the current window location and an environment variable for the port.
+ * 
+ * @function
+ * @name Upload
+ * 
+ * @hook
+ * @name useContext
+ * @description Retrieves the authorization token from `AuthContext`.
+ * 
+ * @hook
+ * @name useState
+ * @description Manages the state for name, content, URL, debloat option, JavaScript program, and response message.
+ * 
+ * @param {React.FormEvent} e - The form submission event.
+ * 
+ * @throws Will throw an error if the fetch request fails.
+ * 
+ * @returns {Promise<void>} A promise that resolves when the form submission is handled.
+ */
 const Upload: React.FC = () => {
   const { x_authorization } = useContext(AuthContext);
   const [name, setName] = useState('');

@@ -1,33 +1,14 @@
 import { metric_manager } from "./metric_manager.js";
 
-/**
- * Formats and logs a JSON string containing various metrics for a given URL.
- *
- * @param url - The URL to be formatted and included in the output.
- * @param metric_array - An array containing metric values for BusFactor, RampUp, ResponsiveMaintainer, and License.
- * @param test_metric - An object containing various latency metrics and net score.
- *
- * @remarks
- * The function trims the input URL and constructs a JSON string with the provided metrics.
- * The JSON string is then logged to the console.
- *
- * @example
- * ```typescript
- * const url = "http://example.com";
- * const metrics = [0.8, 0.9, 0.7, 0.6];
- * const testMetrics = {
- *   net_score: 0.85,
- *   net_score_latency: 0.1,
- *   ramp_up_latency: 0.2,
- *   correctness_latency: 0.3,
- *   bus_factor_latency: 0.4,
- *   maintainer_latency: 0.5,
- *   license_latency: 0.6
- * };
- * output_formatter(url, metrics, testMetrics);
- * ```
- */
 
+/**
+ * Formats the given URL and metrics into a JSON string.
+ *
+ * @param url - The URL to be formatted.
+ * @param metric_array - An array of metrics to be included in the formatted string.
+ * @param test_metric - An object containing various latency metrics.
+ * @returns A JSON string containing the formatted URL and metrics.
+ */
 export function output_formatter(url: string, metric_array: any[], test_metric: metric_manager): string {
     const fixed_url: string = url.trim();
     const formatted_string: string = '{"URL": ' + '"' + fixed_url + '"' + ', ' +

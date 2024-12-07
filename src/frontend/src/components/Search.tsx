@@ -9,6 +9,35 @@ interface Package {
     ID: string;
 }
 
+/**
+ * Search component allows users to search for packages by name or regular expression.
+ * It fetches data from the backend and displays the results in a table.
+ * Users can load more results if available.
+ *
+ * @component
+ * @example
+ * return (
+ *   <Search />
+ * )
+ *
+ * @returns {JSX.Element} The rendered search component.
+ *
+ * @typedef {Object} Package
+ * @property {string} Name - The name of the package.
+ * @property {string} Version - The version of the package.
+ * @property {string} ID - The unique identifier of the package.
+ *
+ * @function constructBackendUrl
+ * @param {string} path - The path to append to the backend URL.
+ * @returns {string} The constructed backend URL.
+ *
+ * @function handleSearch
+ * @param {React.FormEvent} e - The form submission event.
+ * @returns {Promise<void>} Initiates a search request to the backend.
+ *
+ * @function loadMore
+ * @returns {Promise<void>} Loads more search results from the backend.
+ */
 const Search: React.FC = () => {
     const { x_authorization } = useContext(AuthContext);
     const [searchTerm, setSearchTerm] = useState('');
