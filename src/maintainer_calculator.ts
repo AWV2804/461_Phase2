@@ -157,7 +157,7 @@ function calculateOpenClosedRatio(issues: any[]): number {
 
         
     // Calculate and return the ratio
-    return openCount / closedCount;
+    return closedCount / totalcount;
 
 }
 
