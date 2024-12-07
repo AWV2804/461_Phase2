@@ -15,8 +15,8 @@ export function maintainer_net(contributors: any, issues: any, pullRequests: any
     let issueClosureTime = calculateIssueClosureTime(issues);
     let openClosedRatio = calculateOpenClosedRatio(issues);
     let activeMaintainers = calculateActiveMaintainers(contributors);
-
-    // console.log(`Response Time: ${responseTime}`);
+    logger.debug(`Issues: ${issues}, Pull Requests: ${pullRequests}`);
+    // console.log(`Response Time: ${responseTime}`);   
     // console.log(`Issue Closure Time: ${issueClosureTime}`);
     // console.log(`Open/Closed Ratio: ${openClosedRatio}`);
     // console.log(`Active Maintainers: ${activeMaintainers}`);
@@ -67,6 +67,7 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
     let avg = count > 0 ? totalResponseTime / count : 0;
 
     //if the avg time response time is greater than 4 days then it is not responsive
+    logger.debug(`Average Response Time: ${avg}`);
     if(avg < 96){
         return 1;
     } else if(avg < 168) {
