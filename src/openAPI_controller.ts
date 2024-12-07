@@ -73,6 +73,7 @@ const possibleReadmeFiles = [
     'README.txt',
     'README.rst',
     'README.markdown',
+    'readme.markdown',
     'README.html',
     'readme.md',
     'Readme.md'
@@ -115,6 +116,7 @@ app.listen(BACKEND_PORT, () => {
 
 console.log(`OpenAPI_controller.ts(40): ADD "PORT=${FRONTEND_PORT}" and "REACT_APP_BACKEND_PORT=${BACKEND_PORT}" to your .env or things could potentially break. Then delete this console.log.`);
 console.log("Also add BACKEND_PORT to be forwarded in Vscode ports");
+
 const swaggerOptions = {
     swaggerDefinition: {
         openapi: '3.0.2',
@@ -146,6 +148,7 @@ app.use((req, res, next) => {
     UserModel = userDB[1].model('User', db.userSchema);
     next();
 });
+
 
 app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
@@ -271,6 +274,7 @@ app.post('/package/byRegEx', async (req, res) => {
     return res.status(200).json(formattedPackages);
 });
 
+
 app.get('/package//rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -337,10 +341,9 @@ app.get('/package/:id/rate', async (req, res) => {
         logger.error('Package rating choked');
         return res.status(500).send('Package rating choked');
     }
-    console.log(scoreObject);
     const jsonResponse = {
         BusFactor: scoreObject["BusFactor"],
-        BusFactorLatency: scoreObject["BusFactorLatency"],
+        BusFactorLatency: scoreObject["BusFactor_Latency"],
         Correctness: scoreObject["Correctness"],
         CorrectnessLatency: scoreObject["Correctness_Latency"],
         RampUp: scoreObject["RampUp"],
@@ -349,10 +352,10 @@ app.get('/package/:id/rate', async (req, res) => {
         ResponsiveMaintainerLatency: scoreObject["ResponsiveMaintainer_Latency"],
         LicenseScore: scoreObject["License"],
         LicenseScoreLatency: scoreObject["License_Latency"],
-        GoodPinningPractice: scoreObject["GoodPinningPractice"],
-        GoodPinningPracticeLatency: scoreObject["GoodPinningPractice_Latency"],
-        PullRequest: scoreObject["PullRequest"],
-        PullRequestLatency: scoreObject["PullRequest_Latency"],
+        GoodPinningPractice: scoreObject["DependencyPinning"],
+        GoodPinningPracticeLatency: scoreObject["DependencyPinning_Latency"],
+        PullRequest: scoreObject["PullRequestsCodeMetric"],
+        PullRequestLatency: scoreObject["PullRequestsCodeMetric_Latency"],
         NetScore: scoreObject["NetScore"],
         NetScoreLatency: scoreObject["NetScore_Latency"],
     };
@@ -1403,6 +1406,7 @@ app.get('/tracks', async (req, res) => {
     const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
     return res.status(200).json({ plannedTracks });
 });
+
 /*------------------ Extra APIs not in spec ------------------*/
 
 app.post('/create-account', async (req, res) => {
