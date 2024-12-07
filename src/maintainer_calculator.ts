@@ -67,13 +67,13 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
 
     //if the avg time response time is greater than 4 days then it is not responsive
     logger.debug(`Average Response Time: ${avg}`);
-    if(avg < 96){
+    if(avg < 168){
         return 1;
-    } else if(avg < 168) {
-        return 0.7;
     } else if(avg < 336) {
+        return 0.7;
+    } else if(avg < 504) {
         return 0.4;
-    } else if(avg < 744) {
+    } else if(avg < 1008) {
         return 0.1;
     } else {
         return 0;
@@ -111,11 +111,11 @@ function calculateIssueClosureTime(issues: any[]): number {
     //if the close time is longer than 2 weeks then it is not responsive
     if(closetime < 336) {
         return 1;
-    } else if(closetime < 504) {
+    } else if(closetime < 1080) {
         return 0.7;
-    } else if(closetime < 672) {
+    } else if(closetime < 1344) {
         return 0.4;
-    } else if(closetime < 840) {
+    } else if(closetime < 1680) {
         return 0.1;
     } else {
         return 0;
