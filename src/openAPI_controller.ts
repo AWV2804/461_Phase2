@@ -71,6 +71,7 @@ const possibleReadmeFiles = [
     'README.txt',
     'README.rst',
     'README.markdown',
+    'readme.markdown',
     'README.html',
     'readme.md',
     'Readme.md'
