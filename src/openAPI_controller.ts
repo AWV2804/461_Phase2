@@ -771,6 +771,8 @@ app.post('/package', async (req, res) => {
 });
 
 app.post('/package/:id', async (req, res) => { 
+    console.log('Updating package: ', req.body);
+    logger.debug('Updating package:', req.body);
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
         if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
