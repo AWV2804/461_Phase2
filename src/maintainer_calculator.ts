@@ -67,17 +67,8 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
 
     //if the avg time response time is greater than 4 days then it is not responsive
     logger.debug(`Average Response Time: ${avg}`);
-    if(avg < 168){
-        return 1;
-    } else if(avg < 336) {
-        return 0.7;
-    } else if(avg < 504) {
-        return 0.4;
-    } else if(avg < 1008) {
-        return 0.1;
-    } else {
-        return 0;
-    }
+    return 0.2 + 0.8 / (1 + Math.exp((avg - 516) / 20));
+    
 }
 
 /**
