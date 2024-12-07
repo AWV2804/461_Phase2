@@ -939,12 +939,12 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
         }
 
         // Validate the data fields assuming url and content are properly sent
-        if (data['Name'] == null || data['debloat'] == null) {
-            logger.info('Name or debloat was not set.');
-            return res.status(400).send('Name or debloat was not set.');
+        if (data['Name'] == null) {
+            logger.info('Name was not set.');
+            return res.status(400).send('Name was not set.');
         }
-        if (typeof(data['Name']) != 'string' || typeof(data['debloat']) != 'boolean' || typeof(data['JSProgram']) != 'string') {
-            logger.info('Name, debloat, or JSProgram is not a string.');
+        if (typeof(data['Name']) != 'string' || typeof(data['JSProgram']) != 'string') {
+            logger.info('Name or JSProgram is not a string.');
             return res.status(400).send('Data is of incorrect type.');
         }
         if (metadata['Name'] != data['Name']) {
@@ -960,7 +960,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
         const secret = data['secret'];
         const packageName = metadata['Name'];
         const version = metadata['Version'];
-        const debloat = data['debloat'];
+        let debloat = data['debloat'] ? true : false;
         let isUrl = false;
         let content = null;
         let url = data['URL'];
