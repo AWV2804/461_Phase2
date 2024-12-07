@@ -232,7 +232,7 @@ async function checkDocumentationQuality(repoPath: string): Promise<number> {
 
         const totalScore = readabilityScores.ease / 100;
         //console.log(`Documentation quality checked successfully with readability assessment.`);
-        return totalScore < 0 ? 0 : totalScore;
+        return totalScore < 0 ? totalScore*-1 : totalScore;
 
     } catch (error) {
         console.error('Error checking documentation quality:', error);

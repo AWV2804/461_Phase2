@@ -49,7 +49,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import * as util from './utils.js';
 import * as db from './database.js';
-import { rate } from './rate.js';
+import * as rate from './rate.js';
 import cors from 'cors';
 import logger from './logging.js';
 import AdmZip from 'adm-zip';
@@ -62,6 +62,8 @@ import path from 'path';
 import * as s3 from './s3_utils.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { ConnectionClosedEvent } from 'mongodb';
+import { json } from 'stream/consumers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -236,16 +238,31 @@ app.post('/package/byRegEx', async (req, res) => {
         logger.error('Malformed Request');
         return res.status(400).json({ error: 'Malformed Request' });
     }
-    const [success, packages] = await db.findPackageByRegEx(RegEx, Package);
-    if (!success) {
-        logger.error('Error retrieving packages:', packages);
+    let pkgs;
+    try {
+        const [success, packages] = await db.findPackageByRegEx(RegEx, Package);
+        if (!success) {
+            if(packages.message && packages.message.includes("Regular expression is invalid: number too big in {}")) {
+                logger.error('Regular expression is invalid: number too big in {}');
+                return res.status(400).send('Regular expression is invalid: number too big in {}');
+            }
+            logger.error('Error retrieving packages:', packages);
+            return res.status(500).send('Error retrieving packages');
+        }
+        pkgs = packages;
+    } catch (error) {
+        if(error.message && error.message.includes("Regular expression is invalid: number too big in {}")) {
+            logger.error('Regular expression is invalid: number too big in {}');
+            return res.status(400).send('Regular expression is invalid: number too big in {}');
+        }
+        logger.error('Error retrieving packages:', error);
         return res.status(500).send('Error retrieving packages');
     }
-    if(packages.length == 0) {
+    if(pkgs.length == 0) {
         logger.info('No packages found');
         return res.status(404).send('No packages found');
     }
-    const formattedPackages = packages.map((pkg: any) => ({
+    const formattedPackages = pkgs.map((pkg: any) => ({
         Version: pkg.version,
         Name: pkg.name,
         ID: pkg.packageId, // Use packageId if available, fallback to id
@@ -407,14 +424,23 @@ app.post('/package', async (req, res) => {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    const {updatedToken, isAdmin, userGroup} = util.verifyToken(token);
-    if(updatedToken instanceof Error) {
-        logger.error('Invalid or expired token');
-        return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
-    }
-    if(isAdmin != true) {
-        logger.error('You do not have the correct permissions to upload to the database.');
-        return res.status(403).send('You do not have the correct permissions to upload to the database.')
+    let newToken, isadmin, usergroup
+    try {
+        const {updatedToken, isAdmin, userGroup} = util.verifyToken(token);
+        if(updatedToken instanceof Error) {
+            logger.error('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
+        }
+        if(isAdmin != true) {
+            logger.error('You do not have the correct permissions to upload to the database.');
+            return res.status(403).send('You do not have the correct permissions to upload to the database.')
+        }
+        newToken = updatedToken;
+        isadmin = isAdmin;
+        usergroup = userGroup;
+    } catch (error) {
+        logger.error('Error verifying token:', error);
+        return res.status(403).send('Invalid or expired token');
     }
     let { Name, Content, URL, debloat, secret, JSProgram } = req.body
     if ((Content && URL) || (!Content && !URL)) {
@@ -451,7 +477,7 @@ app.post('/package', async (req, res) => {
                     }
                 }
             });
-            
+            console.log('Package JSON Entry:', packageJsonEntry);
             if (!packageJsonEntry) {
                 logger.error('package.json not found in the provided content.');
                 return res.status(400).json({ error: "package.json not found in the provided content." });
@@ -460,7 +486,7 @@ app.post('/package', async (req, res) => {
             // Read and parse the package.json file
             const packageJsonContent = packageJsonEntry.getData().toString('utf8');
             const packageJson = JSON.parse(packageJsonContent);
-    
+            console.log(packageJson, packageJsonContent);
             // Extract the repository link and package name
             const repository = packageJson.repository;
             let repoUrl = '';
@@ -469,9 +495,12 @@ app.post('/package', async (req, res) => {
             } else if (repository && repository.url) {
                 repoUrl = repository.url;
             }
+            console.log('Repository URL:', repoUrl);
             repoUrl = util.parseRepositoryUrl(repoUrl).toString();
             logger.debug('Repository URL:', repoUrl);
+            console.log('Repository URL:', repoUrl);
             const packageName = packageJson.name;
+            console.log('Package Name:', packageName);
             logger.debug('Package Name:', packageName);
             // Log or use the extracted information as needed
             let base64Zip = '';
@@ -488,6 +517,7 @@ app.post('/package', async (req, res) => {
 
                 // Encode the zip buffer as Base64
                 base64Zip = updatedZipBuffer.toString('base64');
+                console.log('Base64 Zip:', base64Zip);
             } else {
                 // If debloat is false, just zip the original content
                 const zipBuffer = zip.toBuffer();
@@ -504,15 +534,16 @@ app.post('/package', async (req, res) => {
                         Name: packageName,
                         Version: version,
                         ID: packageId,
-                        Token: updatedToken,
+                        Token: newToken,
                     },
                     data: {
                         Content: base64Zip,
                         JSProgram: JSProgram || '',
                     },
                 };
-                return res.status(409).send("Package already exists");
+                return res.status(409).json(jsonResponse);
             } else {
+                console.log('Package does not exist');
                 logger.info('Package does not exist');
                 let version = packageJson.version;
                 if(version == null || version == "") {
@@ -524,7 +555,7 @@ app.post('/package', async (req, res) => {
                         Name: packageName,
                         Version: version,
                         ID: packageId,
-                        Token: updatedToken,
+                        Token: newToken,
                     },
                     data: {
                         Content: base64Zip,
@@ -533,7 +564,7 @@ app.post('/package', async (req, res) => {
                 };
                 if (repoUrl.toLowerCase().includes('github')  === false) {
                     const badScore = await util.noRating(repoUrl);
-                    const result = await db.addNewPackage(packageName, URL, Package, packageId, badScore, version, -1, "Content", readMeContent, secret, userGroup);
+                    const result = await db.addNewPackage(packageName, URL, Package, packageId, badScore, version, -1, "Content", readMeContent, secret, usergroup);
                     if(result[0] == false) {
                         logger.error(`Error uploading package:`, packageName);
                         return res.status(500).send('Error uploading package');
@@ -553,9 +584,10 @@ app.post('/package', async (req, res) => {
                     return res.status(201).send(jsonResponse);  
                 }
                 
-                const [package_rating, package_net] = await rate(repoUrl);
+                const [package_rating, package_net] = await rate.rate(repoUrl);
+                console.log('Package Net:', package_net);
                 if (package_net >= 0.5) {
-                    const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "Content", readMeContent, secret, userGroup);
+                    const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "Content", readMeContent, secret, usergroup);
                     if(result[0] == false) {
                         logger.error(`Error uploading package:`, packageName);
                         return res.status(500).send('Error uploading package');
@@ -577,7 +609,7 @@ app.post('/package', async (req, res) => {
                 } else {
                     const jsonResponse = {
                         metadata: {
-                            Token: updatedToken,
+                            Token: newToken,
                         },
                         data: {
                             packageRating: package_rating,
@@ -588,6 +620,7 @@ app.post('/package', async (req, res) => {
                 }
             }
         } catch (error) {
+            console.log(error);
             logger.error('Error processing package content:', error);
             return res.status(500).json({ error: 'Failed to process package content.' });
         }
@@ -663,7 +696,7 @@ app.post('/package', async (req, res) => {
                         Name: package_name,
                         Version: version,
                         ID: packageId,
-                        Token: updatedToken,
+                        Token: newToken,
                     },
                     data: {
                         Content: base64Zip,
@@ -673,7 +706,7 @@ app.post('/package', async (req, res) => {
                 return res.status(409).send(jsonResponse);
             } else {
                 logger.info('Package does not exist');
-                const [package_rating, package_net] = await rate(URL);
+                const [package_rating, package_net] = await rate.rate(URL);
                 logger.debug('Package Net:', package_net);
                 logger.debug('Package Rating:', package_rating);
                 let version = packageJson.version;
@@ -686,7 +719,7 @@ app.post('/package', async (req, res) => {
                         Name: package_name,
                         Version: version,
                         ID: packageId,
-                        Token: updatedToken
+                        Token: newToken
                     },
                     data: {
                         Content: base64Zip,
@@ -695,7 +728,7 @@ app.post('/package', async (req, res) => {
                     },
                 };
                 if (package_net >= 0.5) {
-                    const result = await db.addNewPackage(package_name, URL, Package, packageId, package_rating, version, package_net, "URL", readmeContent, secret, userGroup);
+                    const result = await db.addNewPackage(package_name, URL, Package, packageId, package_rating, version, package_net, "URL", readmeContent, secret, usergroup);
                     if (result[0] == false) {
                         logger.error(`Error uploading package:`, package_name);
                         return res.status(500).send('Error uploading package');
@@ -715,7 +748,7 @@ app.post('/package', async (req, res) => {
                 } else {
                     const jsonResponse = {
                         metadata: {
-                            Token: updatedToken,
+                            Token: newToken,
                         },
                         data: {
                             packageRating: package_rating,
@@ -876,7 +909,7 @@ app.post('/package/:id', async (req, res) => {
             package_rating = util.noRating(url);
             package_net = -1;
         } else {
-            [package_rating, package_net] = await rate(url);
+            [package_rating, package_net] = await rate.rate(url);
         }
 
         if (package_net < 0.5 && url.toLowerCase().includes('github') === false) {
