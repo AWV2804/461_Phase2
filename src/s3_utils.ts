@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 
 const s3 = new S3Client({ region: 'us-east-1' });
@@ -29,8 +29,44 @@ export async function requestContentFromS3(hashKey: string): Promise<Buffer> {
     }
 }
 
+export async function clearS3Bucket() {
+  try {
+    // List objects in the bucket
+    const listParams = {
+      Bucket: BUCKET_NAME,
+    };
 
+    const listCommand = new ListObjectsV2Command(listParams);
+    const listObjects = await s3.send(listCommand);
 
+    const objects = listObjects.Contents;
+
+    if (objects && objects.length > 0) {
+      // Prepare objects for deletion
+      const deleteParams = {
+        Bucket: BUCKET_NAME,
+        Delete: {
+          Objects: objects.map((obj) => ({ Key: obj.Key })),
+        },
+      };
+
+      // Create the DeleteObjectsCommand
+      const deleteCommand = new DeleteObjectsCommand(deleteParams);
+      const deleteResponse = await s3.send(deleteCommand);
+
+      console.log('Deleted objects:', deleteResponse.Deleted);
+
+      // If more objects exist, call the function recursively
+      if (listObjects.IsTruncated) {
+        await clearS3Bucket();
+      }
+    } else {
+      console.log('No objects to delete.');
+    }
+  } catch (error) {
+    console.error('Error clearing S3 bucket:', error);
+  }
+}
 
 /**
 * Uploads the Base64-encoded content to S3 with the provided hash as the key.
