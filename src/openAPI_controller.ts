@@ -216,6 +216,7 @@ app.delete('/reset', async (req, res) => {
 });
 
 app.post('/package/byRegEx', async (req, res) => {
+    console.log(req.body);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Authentication failed due to invalid or missing AuthenticationToken');
@@ -796,7 +797,7 @@ app.post('/package/:id', async (req, res) => {
             });
         }
 
-        if(data['Content'] && !data['Name'] || !data['Content'] && data['Name']) {
+        if((data['Content'] && !data['Name']) || (!data['Content'] && data['Name'])) {
             logger.info('Name or Content was not set.');
             return res.status(400).send('Name or Content was not set.');
         }

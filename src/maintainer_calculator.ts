@@ -100,17 +100,18 @@ function calculateIssueClosureTime(issues: any[]): number {
     let closetime = count > 0 ? totalClosureTime / count : 0;
 
     //if the close time is longer than 2 weeks then it is not responsive
-    if(closetime < 336) {
-        return 1;
-    } else if(closetime < 1080) {
-        return 0.7;
-    } else if(closetime < 1344) {
-        return 0.4;
-    } else if(closetime < 1680) {
-        return 0.1;
-    } else {
-        return 0;
-    }
+    // if(closetime < 336) {
+    //     return 1;
+    // } else if(closetime < 1080) {
+    //     return 0.7;
+    // } else if(closetime < 1344) {
+    //     return 0.4;
+    // } else if(closetime < 1680) {
+    //     return 0.1;
+    // } else {
+    //     return 0;
+    // }
+    return  0.2 + 0.8 / (1 + Math.exp((closetime - 1329) / 20));
 }
 
 /**
