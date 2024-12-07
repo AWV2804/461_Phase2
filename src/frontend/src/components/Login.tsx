@@ -14,41 +14,6 @@ interface DecodedToken {
   usageCount: number;
 }
 
-/**
- * Login component for user authentication.
- * 
- * This component renders a login form that allows users to enter their username and password.
- * Upon submission, it sends a request to the backend to authenticate the user.
- * 
- * @component
- * @returns {JSX.Element} The rendered login component.
- * 
- * @example
- * <Login />
- * 
- * @remarks
- * - Uses `useState` to manage the username and password state.
- * - Uses `useNavigate` from `react-router-dom` for navigation after successful login.
- * - Uses `useContext` to access the `AuthContext` for login functionality.
- * - Constructs the backend URL dynamically based on the current host.
- * - Handles the login action by sending a PUT request to the backend.
- * - Decodes the authentication token to extract user information.
- * - Redirects to the home page upon successful login.
- * - Displays an alert in case of authentication failure or errors.
- * 
- * @function
- * @name constructBackendUrl
- * @param {string} path - The path to append to the backend URL.
- * @returns {string} The constructed backend URL.
- * 
- * @function
- * @name handleLogin
- * @returns {Promise<void>} A promise that resolves when the login action is complete.
- * 
- * @typedef {Object} DecodedToken
- * @property {boolean} isAdmin - Indicates if the user is an admin.
- * @property {string} userGroup - The user group of the authenticated user.
- */
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

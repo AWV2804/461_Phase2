@@ -3,28 +3,6 @@ import React, { useContext } from 'react';
 import { AuthContext } from '../AuthContext.js';
 import './Styling/Reset.css';
 
-/**
- * Reset component provides a button to reset the registry.
- * It uses the `AuthContext` to get the authorization token and sends a DELETE request to the backend.
- * 
- * @component
- * @example
- * return (
- *   <Reset />
- * )
- * 
- * @returns {JSX.Element} The rendered component.
- * 
- * @function
- * @name constructBackendUrl
- * @param {string} path - The path to append to the backend URL.
- * @returns {string} The constructed backend URL.
- * 
- * @function
- * @name handleReset
- * @description Handles the reset action by sending a DELETE request to the backend.
- * @returns {Promise<void>} A promise that resolves when the reset action is complete.
- */
 const Reset: React.FC = () => {
   const { x_authorization } = useContext(AuthContext);
 

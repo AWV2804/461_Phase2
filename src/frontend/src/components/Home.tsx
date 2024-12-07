@@ -3,18 +3,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './Styling/Home.css';
 
-/**
- * The Home component provides a navigation interface with links to various functionalities
- * of the application. Each link directs the user to a different route for specific actions
- * such as searching for packages, uploading packages, updating packages, calculating costs,
- * checking ratings, resetting the registry, and managing accounts.
- *
- * @component
- * @example
- * return (
- *   <Home />
- * )
- */
 const Home: React.FC = () => {
   return (
     <div style={{ paddingLeft: '20px' }}>

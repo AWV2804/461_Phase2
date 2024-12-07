@@ -14,41 +14,6 @@ import './components/Styling/App.css'; // Import the CSS file for styling
 import { AuthContext } from './AuthContext.js';
 import ProtectedRoute from './components/ProtectedRoute.js'; // Import ProtectedRoute
 
-/**
- * The main application component that handles routing and navigation.
- * 
- * @component
- * @returns {JSX.Element} The rendered component.
- * 
- * @example
- * <App />
- * 
- * @remarks
- * This component uses the `AuthContext` to determine the user's authentication status and role.
- * It conditionally renders navigation links and routes based on the user's authentication status and role.
- * 
- * @context
- * - `isLoggedIn`: A boolean indicating if the user is logged in.
- * - `isAdmin`: A boolean indicating if the user is an admin.
- * - `username`: The username of the logged-in user.
- * - `logout`: A function to log out the user.
- * 
- * @routes
- * - `/`: Home component.
- * - `/login`: Login component.
- * - `/upload`: Upload component (admin only).
- * - `/create-account`: CreateAccount component (admin only).
- * - `/search`: Search component.
- * - `/update`: Update component (admin only).
- * - `/cost`: Cost component.
- * - `/reset`: Reset component (admin only).
- * - `/manage`: Manage component.
- * - `/rate`: Rate component.
- * 
- * @protectedRoutes
- * The routes are protected using the `ProtectedRoute` component, which ensures that only authenticated users can access them.
- * Some routes are further restricted to admin users only.
- */
 const App: React.FC = () => {
     const { isLoggedIn, isAdmin, username, logout } = useContext(AuthContext); // Use AuthContext
   

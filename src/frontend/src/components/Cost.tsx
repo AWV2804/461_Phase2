@@ -3,38 +3,6 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../AuthContext.js';
 import './Styling/Cost.css';
 
-/**
- * Cost component allows users to calculate the cost of a package, optionally including its dependencies.
- * 
- * @component
- * 
- * @example
- * return (
- *   <Cost />
- * )
- * 
- * @returns {JSX.Element} The rendered Cost component.
- * 
- * @remarks
- * This component uses the `AuthContext` to retrieve the authorization token and makes a GET request to the backend
- * to fetch the cost information. It handles loading state, error state, and displays the result in a table format.
- * 
- * @hook
- * - `useContext(AuthContext)` to get the authorization token.
- * - `useState` to manage package ID, include dependencies flag, cost result, loading state, and error state.
- * 
- * @function handleCalculate
- * Initiates the cost calculation by making a GET request to the backend.
- * 
- * @function constructBackendUrl
- * Constructs the backend URL for the cost calculation request.
- * 
- * @param {string} path - The path to append to the backend URL.
- * 
- * @returns {string} The constructed backend URL.
- * 
- * @throws Will set an error state if the fetch request fails.
- */
 const Cost: React.FC = () => {
   const { x_authorization } = useContext(AuthContext);
   const [packageId, setPackageId] = useState('');

@@ -9,21 +9,6 @@ interface ProtectedRouteProps {
   adminOnly?: boolean;
 }
 
-/**
- * A component that protects routes based on authentication and authorization status.
- * 
- * @component
- * @param {ProtectedRouteProps} props - The properties for the ProtectedRoute component.
- * @param {React.ReactNode} props.children - The child components to render if access is granted.
- * @param {boolean} [props.adminOnly=false] - Whether the route is restricted to admin users only.
- * 
- * @returns {React.ReactNode} The children components if access is granted, otherwise redirects to the appropriate route.
- * 
- * @example
- * <ProtectedRoute adminOnly={true}>
- *   <AdminPage />
- * </ProtectedRoute>
- */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
   const { isLoggedIn, isAdmin } = useContext(AuthContext);
   const [alertShown, setAlertShown] = useState(false);

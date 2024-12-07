@@ -4,13 +4,6 @@ import { Readable } from 'stream';
 const s3 = new S3Client({ region: 'us-east-1' });
 const BUCKET_NAME = "ece461-zipped-packages";
 
-/**
- * Converts a readable stream into a buffer.
- * This function is useful for downloading files from S3.
- *
- * @param stream - The readable stream to convert.
- * @returns A promise that resolves to a buffer containing the data from the stream.
- */
 const streamToBuffer = (stream: Readable): Promise<Buffer> => { // Convert stream to buffer. allows for downloading files from s3
     return new Promise((resolve, reject) => {
         const chunks: Buffer[] = [];
@@ -20,13 +13,6 @@ const streamToBuffer = (stream: Readable): Promise<Buffer> => { // Convert strea
     });
 }
 
-/**
- * Requests content from an S3 bucket using the provided hash key.
- *
- * @param {string} hashKey - The key used to identify the object in the S3 bucket.
- * @returns {Promise<Buffer>} - A promise that resolves to a Buffer containing the content of the object.
- * @throws {Error} - Throws an error if there is an issue retrieving the content from S3.
- */
 export async function requestContentFromS3(hashKey: string): Promise<Buffer> {
     const getObjectParams = {
         Bucket: BUCKET_NAME,
@@ -43,17 +29,6 @@ export async function requestContentFromS3(hashKey: string): Promise<Buffer> {
     }
 }
 
-/**
- * Clears all objects from an S3 bucket.
- *
- * This function lists all objects in the specified S3 bucket and deletes them.
- * If the bucket contains more objects than can be listed in a single request,
- * the function will call itself recursively until all objects are deleted.
- *
- * @async
- * @function
- * @throws Will throw an error if there is an issue with listing or deleting objects from the S3 bucket.
- */
 export async function clearS3Bucket() {
   try {
     // List objects in the bucket
@@ -121,13 +96,6 @@ export async function uploadContentToS3(content: string, hashKey: string): Promi
    }
 }
 
-/**
- * Removes content from an S3 bucket using the provided hash key.
- *
- * @param {string} hashKey - The key of the content to be removed from the S3 bucket.
- * @returns {Promise<void>} A promise that resolves when the content is successfully removed.
- * @throws Will throw an error if the removal operation fails.
- */
 export async function removeContentFromS3(hashKey: string): Promise<void> {
     const deleteObjectParams = {
         Bucket: BUCKET_NAME,
