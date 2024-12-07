@@ -201,7 +201,7 @@ app.delete('/reset', async (req, res) => {
             result2 = [true, 'No collections to delete'];
         }
         console.log(`Registry values: ${result}, ${result2}`);
-        logger.info(`Registry values: ${result}, ${result2}`);
+        logger.debug(`Registry values: ${result}, ${result2}`);
         if (result[0] == true && result2[0] == true) {
             logger.info('Registry is reset.');
             return res.status(200).send('Registry has been reset.');
@@ -259,7 +259,7 @@ app.post('/package/byRegEx', async (req, res) => {
         Name: pkg.name,
         ID: pkg.packageId, // Use packageId if available, fallback to id
     }));
-    logger.info('Packages found:', formattedPackages);
+    logger.debug('Packages found:', formattedPackages);
     return res.status(200).json(formattedPackages);
 });
 
@@ -368,7 +368,7 @@ app.get('/package/:id/rate', async (req, res) => {
         NetScore: scoreObject["NetScore"],
         NetScoreLatency: scoreObject["NetScore_Latency"],
     };
-    logger.info('Package rated successfully:', jsonResponse);
+    logger.debug('Package rated successfully:', jsonResponse);
     return res.status(200).json(jsonResponse);
 });
 
@@ -490,7 +490,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
         let isUrl = false;
         let content = null;
         let url = data['URL'];
-        logger.info('Updating package:', packageName);
+        logger.debug('Updating package:', packageName);
         if (url) { // if you are given a URL, get the base64 encoded zipped content
             isUrl = true;
             try {
@@ -508,7 +508,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
 
                 // Process the URL
                 // console.log('Processing URL:', url);
-                logger.info('Processing URL:', url);
+                logger.debug('Processing URL:', url);
                 content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
@@ -564,15 +564,15 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
             }
             url = util.parseRepositoryUrl(url).toString();
         }
-        logger.info('Package Name:', packageName);
-        logger.info('Repository URL:', url);
+        logger.debug('Package Name:', packageName);
+        logger.debug('Repository URL:', url);
         console.log('Package Name:', packageName);
         console.log('Repository URL:', url);
 
         const [package_rating, package_net] = await rate(url);
 
         if (package_net < 0.5) {
-            logger.info(`Package ${packageName} rating too low: ${package_rating}`);
+            logger.debug(`Package ${packageName} rating too low: ${package_rating}`);
             return res.status(424).send('Package rating too low');
         }
         // package is now ingestible 
@@ -617,7 +617,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
                 const [major, minor] = pkg.version.split('.');
                 return majorKey == major && minorKey == minor;
             }).map(pkg => pkg.version); // will only store the version string rather than whole package
-            logger.info("Number of matches found: ", matches.length);
+            logger.debug("Number of matches found: ", matches.length);
 
             matches.sort((a, b) => {
                 const patchA = parseInt(a.split('.')[2]);
@@ -669,7 +669,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
                 }
 
                 if (result[0] == true) {
-                    logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
+                    logger.debug(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                     return res.status(200).send('Package has been updated');
                 }  else {
                     logger.info('Error updating package');
@@ -704,7 +704,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
                         return res.status(500).send('Error uploading content to S3');
                     }
                     if (result[0] == true) {
-                        logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
+                        logger.debug(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                         return res.status(200).send('Package has been updated');
                     }
                 }
@@ -734,7 +734,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
                         return res.status(500).send('Error uploading content to S3');
                     }
 
-                    logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
+                    logger.debug(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                     return res.status(200).send('Package has been updated');
                 } else if (parseInt(patchKey) == latestUploadedPatch) {
                     logger.info('Version already exists');
@@ -954,9 +954,9 @@ app.post('/package', async (req, res) => {
                 repoUrl = repository.url;
             }
             repoUrl = util.parseRepositoryUrl(repoUrl).toString();
-            logger.info('Repository URL:', repoUrl);
+            logger.debug('Repository URL:', repoUrl);
             const packageName = packageJson.name;
-            logger.info('Package Name:', packageName);
+            logger.debug('Package Name:', packageName);
             // Log or use the extracted information as needed
             let base64Zip = '';
             const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
@@ -980,7 +980,7 @@ app.post('/package', async (req, res) => {
             fs.rmSync(tempDir, { recursive: true, force: true });
             const pkg = await db.getPackagesByNameOrHash(packageName, Package);
             if(pkg[0] == true) {
-                logger.info(`Package ${packageName} already exists with score: ${pkg[1]["score"]}`);
+                logger.debug(`Package ${packageName} already exists with score: ${pkg[1]["score"]}`);
                 const version = pkg[1]["version"];
                 const packageId = SHA256(packageName + version).toString();
                 const jsonResponse = {
@@ -1033,7 +1033,7 @@ app.post('/package', async (req, res) => {
                         } else logger.error('Package removed from mongo');
                         return res.status(500).send('Error uploading content to S3');
                     }
-                    logger.info(`Package ${packageName} uploaded with score: ${package_rating}`);
+                    logger.debug(`Package ${packageName} uploaded with score: ${package_rating}`);
 
                     return res.status(201).send(jsonResponse);  
                     
@@ -1046,7 +1046,7 @@ app.post('/package', async (req, res) => {
                             packageRating: package_rating,
                         },
                     };
-                    logger.info(`Package ${packageName} rating too low: ${package_rating}`);
+                    logger.debug(`Package ${packageName} rating too low: ${package_rating}`);
                     return res.status(424).send(jsonResponse);
                 }
             }
@@ -1062,7 +1062,7 @@ app.post('/package', async (req, res) => {
             if (URL.includes('npmjs.com')) {
                 URL = await util.processNPMUrl(URL);
             }
-            logger.info('Processing URL:', URL);
+            logger.debug('Processing URL:', URL);
             const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
             // const distDir = path.join(tempDir, 'dist');
             fs.mkdirSync(tempDir, { recursive: true });
@@ -1117,11 +1117,11 @@ app.post('/package', async (req, res) => {
             }
 
             // Log or use the extracted information as needed
-            logger.info('Package Name:', package_name);
+            logger.debug('Package Name:', package_name);
             fs.rmSync(tempDir, { recursive: true, force: true });
             const pkg = await db.getPackagesByNameOrHash(package_name, Package);
             if (pkg[0] == true) { // if the package already exists, just return the score
-                logger.info(`Package ${package_name} already exists with score: ${pkg[1]["score"]}`);
+                logger.debug(`Package ${package_name} already exists with score: ${pkg[1]["score"]}`);
                 const version = pkg[1]["version"];
                 const packageId = SHA256(package_name + version).toString();
                 const jsonResponse = {
@@ -1140,8 +1140,8 @@ app.post('/package', async (req, res) => {
             } else {
                 logger.info('Package does not exist');
                 const [package_rating, package_net] = await rate(URL);
-                logger.info('Package Net:', package_net);
-                logger.info('Package Rating:', package_rating);
+                logger.debug('Package Net:', package_net);
+                logger.debug('Package Rating:', package_rating);
                 let version = packageJson.version;
                 if(version == null || version == "") {
                     version = '1.0.0';
@@ -1187,7 +1187,7 @@ app.post('/package', async (req, res) => {
                             packageRating: package_rating,
                         },
                     };
-                    logger.info(`Package ${package_name} rating too low: ${package_rating}`);
+                    logger.debug(`Package ${package_name} rating too low: ${package_rating}`);
                     return res.status(424).send(jsonResponse);
                 }
             }

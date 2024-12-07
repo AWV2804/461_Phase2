@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   test: {
-    exclude: ['test/testing_data/**', 'node_modules'],
+    exclude: ['test/testing_data/**', 'node_modules', 'test/frontend_e2e/**'],
     include: ['test/**/**'], // Include .jsx and .tsx files
     testTimeout: 40000,
     globals: true,
@@ -16,7 +16,7 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'html'], // Add 'html' for detailed report
       reportsDirectory: './coverage',
       include: ['src/**/*.js', 'src/**/*.jsx', 'src/**/*.tsx'], // Include .jsx and .tsx files
-      exclude: ['test/**', '*.ts', 'src/frontend/src/components/*.tsx'],
+      exclude: ['test/**', '*.ts', 'src/frontend/src/components/*.tsx', 'src/frontend/**', 'src/tmp/**'],
       reportOnFailure: true,
     },
   },
