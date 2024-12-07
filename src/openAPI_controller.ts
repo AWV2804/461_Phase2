@@ -660,10 +660,9 @@ app.get('/package/:id/rate', async (req, res) => {
         logger.error('Package rating choked');
         return res.status(500).send('Package rating choked');
     }
-    console.log(scoreObject);
     const jsonResponse = {
         BusFactor: scoreObject["BusFactor"],
-        BusFactorLatency: scoreObject["BusFactorLatency"],
+        BusFactorLatency: scoreObject["BusFactor_Latency"],
         Correctness: scoreObject["Correctness"],
         CorrectnessLatency: scoreObject["Correctness_Latency"],
         RampUp: scoreObject["RampUp"],
@@ -672,10 +671,10 @@ app.get('/package/:id/rate', async (req, res) => {
         ResponsiveMaintainerLatency: scoreObject["ResponsiveMaintainer_Latency"],
         LicenseScore: scoreObject["License"],
         LicenseScoreLatency: scoreObject["License_Latency"],
-        GoodPinningPractice: scoreObject["GoodPinningPractice"],
-        GoodPinningPracticeLatency: scoreObject["GoodPinningPractice_Latency"],
-        PullRequest: scoreObject["PullRequest"],
-        PullRequestLatency: scoreObject["PullRequest_Latency"],
+        GoodPinningPractice: scoreObject["DependencyPinning"],
+        GoodPinningPracticeLatency: scoreObject["DependencyPinning_Latency"],
+        PullRequest: scoreObject["PullRequestsCodeMetric"],
+        PullRequestLatency: scoreObject["PullRequestsCodeMetric_Latency"],
         NetScore: scoreObject["NetScore"],
         NetScoreLatency: scoreObject["NetScore_Latency"],
     };
