@@ -200,6 +200,7 @@ app.delete('/reset', async (req, res) => {
         } else {
             result2 = [true, 'No collections to delete'];
         }
+        await s3.clearS3Bucket();
         console.log(`Registry values: ${result}, ${result2}`);
         logger.debug(`Registry values: ${result}, ${result2}`);
         if (result[0] == true && result2[0] == true) {
@@ -927,6 +928,12 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
             });
         }
 
+        if(data['Content'] && !data['Name'] || !data['Content'] && data['Name']) {
+            logger.info('Name or Content was not set.');
+            return res.status(400).send('Name or Content was not set.');
+        }
+        
+
         // Validate the metadata fields
         if (!metadata['Name'] || !metadata['Version'] || !metadata['ID']) {
             logger.info('Name, Version, or ID was not set.');
@@ -938,15 +945,7 @@ app.post('/package/:id', async (req, res) => { // change return body? right now 
         }
 
         // Validate the data fields assuming url and content are properly sent
-        if (data['Name'] == null) {
-            logger.info('Name was not set.');
-            return res.status(400).send('Name was not set.');
-        }
-        if (typeof(data['Name']) != 'string' || typeof(data['JSProgram']) != 'string') {
-            logger.info('Name or JSProgram is not a string.');
-            return res.status(400).send('Data is of incorrect type.');
-        }
-        if (metadata['Name'] != data['Name']) {
+        if (data['Name'] && metadata['Name'] != data['Name']) {
             logger.info('Name in metadata does not match name in data.');
             return res.status(400).send('Name in metadata does not match name in data.');
         }
