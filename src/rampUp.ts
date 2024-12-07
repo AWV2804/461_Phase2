@@ -30,6 +30,158 @@ async function deleteDirectory(repoPath: string): Promise<void> {
     }
 }
 
+
+function cleanText(text) {
+    // all these tags should be preceeded by a full stop. 
+    var fullStopTags = ['li', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dd'];
+    
+    fullStopTags.forEach(function(tag) {
+        text = text.replace("</" + tag + ">",".");
+    });
+    
+    text = text
+        .replace(/<[^>]+>/g, "")				// Strip tags
+        .replace(/[,:;()\/&+]|\-\-/g, " ")				// Replace commas, hyphens etc (count them as spaces)
+        .replace(/[\.!?]/g, ".")					// Unify terminators
+        .replace(/^\s+/, "")						// Strip leading whitespace
+        .replace(/[\.]?(\w+)[\.]?(\w+)@(\w+)[\.](\w+)[\.]?/g, "$1$2@$3$4")	// strip periods in email addresses (so they remain counted as one word)
+        .replace(/[ ]*(\n|\r\n|\r)[ ]*/g, ".")	// Replace new lines with periods
+        .replace(/([\.])[\.]+/g, ".")			// Check for duplicated terminators
+        .replace(/[ ]*([\.])/g, ". ")				// Pad sentence terminators
+        .replace(/\s+/g, " ")						// Remove multiple spaces
+        .replace(/\s+$/, "");					// Strip trailing whitespace
+        
+    if(text.slice(-1) != '.') {
+        text += "."; // Add final terminator, just in case it's missing.
+    }
+    return text;
+}
+
+function wordCount(text) {
+    text = text ? cleanText(text) : text;
+    return text.replace(/[^\.!?]/g, '').length || 1;
+}
+
+function sentenceCount(text) {
+    text = text ? cleanText(text) : text;
+    return text.split(/[\.!\?]+/).length || 1;
+}
+
+function averageWordsPerSentence(text) {
+    text = text ? cleanText(text) : text;
+    console.log(wordCount(text), sentenceCount(text));
+    return wordCount(text) / sentenceCount(text);
+}
+
+function syllablesCount(word) {
+    var syllableCount = 0,
+			prefixSuffixCount = 0,
+			wordPartCount = 0;
+    word = word.toLowerCase().replace(/[^a-z]/g,"");
+    var problemWords = {
+        "simile":		3,
+        "forever":		3,
+        "shoreline":	2
+    };
+    if (problemWords.hasOwnProperty(word)) return problemWords[word];
+		
+		// These syllables would be counted as two but should be one
+		var subSyllables = [
+			/cial/,
+			/tia/,
+			/cius/,
+			/cious/,
+			/giu/,
+			/ion/,
+			/iou/,
+			/sia$/,
+			/[^aeiuoyt]{2,}ed$/,
+			/.ely$/,
+			/[cg]h?e[rsd]?$/,
+			/rved?$/,
+			/[aeiouy][dt]es?$/,
+			/[aeiouy][^aeiouydt]e[rsd]?$/,
+			/^[dr]e[aeiou][^aeiou]+$/, // Sorts out deal, deign etc
+			/[aeiouy]rse$/ // Purse, hearse
+		];
+	
+		// These syllables would be counted as one but should be two
+		var addSyllables = [
+			/ia/,
+			/riet/,
+			/dien/,
+			/iu/,
+			/io/,
+			/ii/,
+			/[aeiouym]bl$/,
+			/[aeiou]{3}/,
+			/^mc/,
+			/ism$/,
+			/([^aeiouy])\1l$/,
+			/[^l]lien/,
+			/^coa[dglx]./,
+			/[^gq]ua[^auieo]/,
+			/dnt$/,
+			/uity$/,
+			/ie(r|st)$/
+		];
+	
+		// Single syllable prefixes and suffixes
+		var prefixSuffix = [
+			/^un/,
+			/^fore/,
+			/ly$/,
+			/less$/,
+			/ful$/,
+			/ers?$/,
+			/ings?$/
+		];
+	
+		// Remove prefixes and suffixes and count how many were taken
+		prefixSuffix.forEach(function(regex) {
+			if (word.match(regex)) {
+				word = word.replace(regex,"");
+				prefixSuffixCount ++;
+			}
+		});
+		
+		wordPartCount = word
+			.split(/[^aeiouy]+/ig)
+			.filter(function(wordPart) {
+				return !!wordPart.replace(/\s+/ig,"").length;
+			})
+			.length;
+		
+		// Get preliminary syllable count...
+		syllableCount = wordPartCount + prefixSuffixCount;
+		
+		// Some syllables do not follow normal rules - check for them
+		subSyllables.forEach(function(syllable) {
+			if (word.match(syllable)) syllableCount --;
+		});
+		
+		addSyllables.forEach(function(syllable) {
+			if (word.match(syllable)) syllableCount ++;
+		});
+		
+		return syllableCount || 1;
+}
+function averageSyllablesPerWord(text) {
+    text = text ? cleanText(text) : text;
+    var syllableCount = 0, wordsCount = wordCount(text);
+    text.split(/\s+/).forEach(function(word) {
+        syllableCount += syllablesCount(word);
+    });
+    console.log(syllableCount, wordsCount);
+    return (syllableCount||1) / (wordsCount||1);
+}
+function fleschKincaidReadingEase(text) {
+    text = text ? cleanText(text) : text;
+    const avgWordsPerSentence = averageWordsPerSentence(text);
+    const avgSyllablesPerWord = averageSyllablesPerWord(text);
+    console.log(avgWordsPerSentence, avgSyllablesPerWord);
+    return Math.round((206.835 - (1.015 * avgWordsPerSentence) - (84.6 * avgSyllablesPerWord))*10)/10;
+}
 // Calculate readability of the text using text-statistics
 /**
  * Calculates the readability of the given text content.
@@ -39,11 +191,13 @@ async function deleteDirectory(repoPath: string): Promise<void> {
  * @property ease - The Flesch-Kincaid Reading Ease score.
  * @property gradeLevel - The Flesch-Kincaid Grade Level.
  */
-function calculateReadability(textContent: string): { ease: number, gradeLevel: number } {
-    const stats = new TextStatistics(textContent); // Create an instance of TextStatistics
+function calculateReadability(textContent: string): { ease: number } {
+    // const stats = new TextStatistics(textContent); // Create an instance of TextStatistics
+    // const ease = stats.fleschKincaidReadingEase();
+    // const gradeLevel = stats.fleschKincaidGradeLevel();
+    // console.log(`Test Score: ${fleschKincaidReadingEase(textContent)}`);
     return {
-        ease: stats.fleschKincaidReadingEase(),
-        gradeLevel: stats.fleschKincaidGradeLevel()
+        ease: fleschKincaidReadingEase(textContent)
     };
 }
 
@@ -72,13 +226,13 @@ async function checkDocumentationQuality(repoPath: string): Promise<number> {
         const plainTextContent = await marked.parse(readmeContent); // Convert Markdown to plain text for analysis
         console.log('Plain Text Content:', plainTextContent.substring(0, 200));
         const readabilityScores = calculateReadability(plainTextContent);
-        logger.debug(`Readability Scores - Ease: ${readabilityScores.ease}, Grade Level: ${readabilityScores.gradeLevel}`);
+        logger.debug(`Readability Scores - Ease: ${readabilityScores.ease}`);
         //console.log(`Readability Scores - Ease: ${readabilityScores.ease}, Grade Level: ${readabilityScores.gradeLevel}`);
         //console.log('README.md content:', plainTextContent.substring(0, 200));
 
         const totalScore = readabilityScores.ease / 100;
         //console.log(`Documentation quality checked successfully with readability assessment.`);
-        return totalScore;
+        return totalScore < 0 ? 0 : totalScore;
 
     } catch (error) {
         console.error('Error checking documentation quality:', error);
