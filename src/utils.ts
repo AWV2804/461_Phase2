@@ -42,9 +42,6 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
         let url: URL;
 
         if (typeof repository === 'string') {
-            if (repository.toLowerCase().includes('github') ===  false) {
-                return repository;
-            }
             // Handle shorthand format like "github:user/repo"
             if (repository.startsWith('github:')) {
                 const [owner, repo] = repository.replace('github:', '').split('/');
@@ -60,6 +57,9 @@ export function parseRepositoryUrl(repository: string | { url: string }): string
             }
             if (/^[^/]+\/[^/]+$/.test(repository)) {
                 return `https://github.com/${repository}`;
+            }
+            if (repository.toLowerCase().includes('github') ===  false) {
+                return repository;
             }
 
             // Convert other formats to standard URL format
