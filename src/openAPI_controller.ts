@@ -131,7 +131,187 @@ const swaggerOptions = {
                     url: `https://${process.env.EC2_IP_ADDRESS}`,
                 }
             ]
-        }
+        },
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                }
+            },
+            schemas: {
+                AuthenticationRequest: {
+                    type: 'object',
+                    required: ['User', 'Secret'],
+                    properties: {
+                        User: {
+                            type: 'object',
+                            required: ['name', 'isAdmin'],
+                            properties: {
+                                name: { type: 'string' },
+                                isAdmin: { type: 'boolean' }
+                            }
+                        },
+                        Secret: {
+                            type: 'object',
+                            required: ['password'],
+                            properties: {
+                                password: { type: 'string' }
+                            }
+                        }
+                    }
+                },
+                AuthenticationResponse: {
+                    type: 'object',
+                    properties: {
+                        token: { type: 'string' }
+                    }
+                },
+                PackageUploadRequest: {
+                    type: 'object',
+                    oneOf: [
+                        {
+                            required: ['Content'],
+                            properties: {
+                                Name: { type: 'string' },
+                                Content: { type: 'string', description: 'Base64 encoded zip file' },
+                                debloat: { type: 'boolean' },
+                                secret: { type: 'boolean' },
+                                JSProgram: { type: 'string' }
+                            }
+                        },
+                        {
+                            required: ['URL'],
+                            properties: {
+                                Name: { type: 'string' },
+                                URL: { type: 'string', description: 'URL of the package repository' },
+                                debloat: { type: 'boolean' },
+                                secret: { type: 'boolean' },
+                                JSProgram: { type: 'string' }
+                            }
+                        }
+                    ]
+                },
+                PackageUploadResponse: {
+                    type: 'object',
+                    properties: {
+                        metadata: {
+                            type: 'object',
+                            properties: {
+                                Name: { type: 'string' },
+                                Version: { type: 'string' },
+                                ID: { type: 'string' },
+                                Token: { type: 'string' }
+                            }
+                        },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                Content: { type: 'string', description: 'Base64 encoded zip file' },
+                                JSProgram: { type: 'string' }
+                            }
+                        }
+                    }
+                },
+                Package: {
+                    type: 'object',
+                    properties: {
+                        Name: { type: 'string' },
+                        Version: { type: 'string' },
+                        ID: { type: 'string' },
+                        // Add other relevant fields
+                    }
+                },
+                PackageResponse: {
+                    type: 'object',
+                    properties: {
+                        metadata: {
+                            type: 'object',
+                            properties: {
+                                Name: { type: 'string' },
+                                Version: { type: 'string' },
+                                ID: { type: 'string' },
+                            }
+                        },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                Content: { type: 'string' },
+                                JSProgram: { type: 'string' },
+                            }
+                        }
+                    }
+                },
+                ErrorResponse: {
+                    type: 'object',
+                    properties: {
+                        error: { type: 'string' },
+                        details: { type: 'string' }
+                    }
+                },
+                User: {
+                    type: 'object',
+                    properties: {
+                        username: { type: 'string' },
+                        isAdmin: { type: 'boolean' },
+                        userGroup: { type: 'string' }
+                    }
+                },
+                CreateAccountRequest: {
+                    type: 'object',
+                    required: ['username', 'password', 'isAdmin'],
+                    properties: {
+                        username: { type: 'string' },
+                        password: { type: 'string' },
+                        isAdmin: { type: 'boolean' },
+                        userGroup: { type: 'string' }
+                    }
+                },
+                CreateAccountResponse: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string' },
+                        user: { $ref: '#/components/schemas/User' }
+                    }
+                },
+                DeleteAccountRequest: {
+                    type: 'object',
+                    required: ['usernameToDelete', 'isAdmin'],
+                    properties: {
+                        username: { type: 'string' },
+                        usernameToDelete: { type: 'string' },
+                        isAdmin: { type: 'boolean' }
+                    }
+                },
+                DeleteAccountResponse: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string' },
+                        user: { $ref: '#/components/schemas/User' }
+                    }
+                },
+                ResetResponse: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string' }
+                    }
+                },
+                Track: {
+                    type: 'object',
+                    properties: {
+                        plannedTracks: {
+                            type: 'array',
+                            items: { type: 'string' }
+                        }
+                    }
+                }
+                // Add more schemas as needed
+            }
+        },
+        security: [{
+            bearerAuth: []
+        }]
     },
     apis: ['./src/*.ts'],
 };
@@ -145,6 +325,33 @@ app.use((req, res, next) => {
     next();
 });
 
+/**
+ * @swagger
+ * /reset:
+ *   delete:
+ *     summary: Reset the package and user databases.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Registry has been reset.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResetResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while resetting the registry.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -210,6 +417,59 @@ app.delete('/reset', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /package/byRegEx:
+ *   post:
+ *     summary: Find packages by regular expression.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       description: Regular expression to search for packages.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - RegEx
+ *             properties:
+ *               RegEx:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: List of packages matching the regular expression.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Package'
+ *       400:
+ *         description: Malformed request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: No packages found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while retrieving packages.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.post('/package/byRegEx', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -254,6 +514,7 @@ app.post('/package/byRegEx', async (req, res) => {
     return res.status(200).json(formattedPackages);
 });
 
+
 app.get('/package//rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -278,6 +539,85 @@ app.get('/package//rate', async (req, res) => {
     return res.status(400).send('Missing package ID');
 });
 
+/**
+ * @swagger
+ * /package/{id}/rate:
+ *   get:
+ *     summary: Retrieve the rating of a specific package.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the package to rate.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Package rating retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 BusFactor:
+ *                   type: number
+ *                 BusFactorLatency:
+ *                   type: number
+ *                 Correctness:
+ *                   type: number
+ *                 CorrectnessLatency:
+ *                   type: number
+ *                 RampUp:
+ *                   type: number
+ *                 RampUpLatency:
+ *                   type: number
+ *                 ResponsiveMaintainer:
+ *                   type: number
+ *                 ResponsiveMaintainerLatency:
+ *                   type: number
+ *                 LicenseScore:
+ *                   type: number
+ *                 LicenseScoreLatency:
+ *                   type: number
+ *                 GoodPinningPractice:
+ *                   type: number
+ *                 GoodPinningPracticeLatency:
+ *                   type: number
+ *                 PullRequest:
+ *                   type: number
+ *                 PullRequestLatency:
+ *                   type: number
+ *                 NetScore:
+ *                   type: number
+ *                 NetScoreLatency:
+ *                   type: number
+ *       400:
+ *         description: Missing package ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Package not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while retrieving package rating.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.get('/package/:id/rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -343,6 +683,52 @@ app.get('/package/:id/rate', async (req, res) => {
     return res.status(200).json(jsonResponse);
 });
 
+/**
+ * @swagger
+ * /package/{id}:
+ *   get:
+ *     summary: Retrieve information about a specific package.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the package to retrieve.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Package information retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PackageResponse'
+ *       400:
+ *         description: Missing or invalid Package ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Package not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while retrieving package information.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.get('/package/:id?', async (req, res) => {
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
@@ -401,6 +787,67 @@ app.get('/package/:id?', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /package:
+ *   post:
+ *     summary: Upload a new package and calculate its score.
+ *     description: |
+ *       This endpoint allows authenticated users with administrative privileges to upload a new package either by providing its content as a base64-encoded ZIP file or by specifying a repository URL. Upon successful upload, the package is scored based on various metrics.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       description: Package data to upload. Provide either `Content` (base64-encoded ZIP) or `URL` of the repository, but not both.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - $ref: '#/components/schemas/PackageUploadByContent'
+ *               - $ref: '#/components/schemas/PackageUploadByURL'
+ *     responses:
+ *       201:
+ *         description: Package uploaded successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PackageUploadResponse'
+ *       400:
+ *         description: Invalid request data. Either `Content` or `URL` must be provided, but not both. Missing required fields.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication token, or insufficient permissions.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Conflict. The package already exists in the registry.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: string
+ *               example: "Package already exists"
+ *       424:
+ *         description: Failed dependency or package rating too low.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 packageRating:
+ *                   type: number
+ *                   description: The calculated rating of the package.
+ *       500:
+ *         description: Server error while uploading the package.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ **/
 app.post('/package', async (req, res) => {
     const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!token || token == '' || token == null || token.trim() == '') {
@@ -734,6 +1181,99 @@ app.post('/package', async (req, res) => {
     
 });
 
+/**
+ * @swagger
+ * /package/{id}:
+ *   post:
+ *     summary: Update an existing package.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the package to update.
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       description: Package data to update.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: ['metadata', 'data']
+ *             properties:
+ *               metadata:
+ *                 type: object
+ *                 required: ['Name', 'Version', 'ID']
+ *                 properties:
+ *                   Name:
+ *                     type: string
+ *                   Version:
+ *                     type: string
+ *                   ID:
+ *                     type: string
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   Content:
+ *                     type: string
+ *                   URL:
+ *                     type: string
+ *                   debloat:
+ *                     type: boolean
+ *                   secret:
+ *                     type: boolean
+ *                   JSProgram:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Package has been updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid request data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Package not found or version does not exist.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Conflict. Package or version already exists.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: string
+ *       424:
+ *         description: Failed dependency or package rating too low.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 packageRating:
+ *                   type: number
+ *       500:
+ *         description: Server error while updating the package.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.post('/package/:id', async (req, res) => { 
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
@@ -1058,6 +1598,44 @@ app.post('/package/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /authenticate:
+ *   put:
+ *     summary: Authenticate a user and obtain a bearer token.
+ *     requestBody:
+ *       description: User credentials for authentication.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AuthenticationRequest'
+ *     responses:
+ *       200:
+ *         description: Authentication successful. Returns a bearer token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Malformed authentication request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Invalid username or password.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error during authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.put('/authenticate', async (req, res) => {
     try {
         const { User, Secret } = req.body;
@@ -1135,6 +1713,64 @@ app.get('/package//cost', async (req, res) => {
     return res.status(400).send('Missing or invalid Package ID');
 });
 
+/**
+ * @swagger
+ * /package/{id}/cost:
+ *   get:
+ *     summary: Get the cost of a specific package.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the package.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: dependency
+ *         schema:
+ *           type: boolean
+ *         description: Whether to include dependencies in the cost calculation.
+ *     responses:
+ *       200:
+ *         description: Package cost retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties:
+ *                 type: object
+ *                 properties:
+ *                   standaloneCost:
+ *                     type: number
+ *                   totalCost:
+ *                     type: number
+ *       400:
+ *         description: Missing or invalid Package ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Package not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while retrieving package cost.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
     const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
@@ -1251,6 +1887,62 @@ app.get('/package/:id/cost', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /packages:
+ *   post:
+ *     summary: Search for packages based on queries.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: string
+ *         description: Offset for pagination.
+ *     requestBody:
+ *       description: Array of package queries.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               required: ['Name']
+ *               properties:
+ *                 Name:
+ *                   type: string
+ *                 Version:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: List of packages matching the queries.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Package'
+ *       400:
+ *         description: Invalid request body or version format.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       413:
+ *         description: Too many packages returned.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: string
+ *       500:
+ *         description: Server error while fetching packages.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.post('/packages', async (req, res) => {
     const offset = req.query.offset as string | undefined;
     const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
@@ -1366,12 +2058,63 @@ app.post('/packages', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /tracks:
+ *   get:
+ *     summary: Retrieve the list of implemented tracks.
+ *     responses:
+ *       200:
+ *         description: List of planned tracks.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Track'
+ *       500:
+ *         description: Server error while retrieving tracks.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.get('/tracks', async (req, res) => {
     const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
     return res.status(200).json({ plannedTracks });
 });
 /*------------------ Extra APIs not in spec ------------------*/
 
+/**
+ * @swagger
+ * /create-account:
+ *   post:
+ *     summary: Create a new user account.
+ *     requestBody:
+ *       description: User account details.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateAccountRequest'
+ *     responses:
+ *       200:
+ *         description: User created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CreateAccountResponse'
+ *       400:
+ *         description: Invalid request data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while creating user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.post('/create-account', async (req, res) => {
     const { username, password, isAdmin, userGroup } = req.body;
 
@@ -1398,6 +2141,44 @@ app.post('/create-account', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /delete-account:
+ *   delete:
+ *     summary: Delete a user account.
+ *     requestBody:
+ *       description: Details of the account to delete.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/DeleteAccountRequest'
+ *     responses:
+ *       200:
+ *         description: User deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeleteAccountResponse'
+ *       400:
+ *         description: Invalid request data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden. Invalid permissions.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error while deleting user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 app.delete('/delete-account', async (req, res) => {
     const { username, usernameToDelete, isAdmin } = req.body;
     
