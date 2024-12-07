@@ -1227,6 +1227,8 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
             }
         }
     }  catch (error) {
+        console.error('WHAT WHY AM I HERE');
+        console.info('WHAT WHY AM I HERE');
         logger.error(error);
         return res.status(400).json({ error: 'Bad Request' });
     }
