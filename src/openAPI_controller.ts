@@ -961,7 +961,7 @@ app.post('/package/:id?', async (req, res) => { // change return body? right now
         let isUrl = false;
         let content = null;
         let url = data['URL'];
-        logger.info('Updating package:', packageName);
+        console.log('Updating package:', packageName);
         if (url) { // if you are given a URL, get the base64 encoded zipped content
             isUrl = true;
             try {
