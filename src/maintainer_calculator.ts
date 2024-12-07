@@ -15,7 +15,6 @@ export function maintainer_net(contributors: any, issues: any, pullRequests: any
     let issueClosureTime = calculateIssueClosureTime(issues);
     let openClosedRatio = calculateOpenClosedRatio(issues);
     let activeMaintainers = calculateActiveMaintainers(contributors);
-    logger.debug(`Issues: ${issues}, Pull Requests: ${pullRequests}`);
     // console.log(`Response Time: ${responseTime}`);   
     // console.log(`Issue Closure Time: ${issueClosureTime}`);
     // console.log(`Open/Closed Ratio: ${openClosedRatio}`);
@@ -46,7 +45,11 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
     };
 
     // Calculate response time for issues
+    logger.info("COUNTING ISSUES");
+    let cnt = 0;
     for (const issue of issues) {
+        cnt++;
+        logger.debug(`Issue ${cnt}`);
         if (issue.created_at && issue.closed_at) {
             const responseTime = getTimeDifferenceInHours(issue.created_at, issue.closed_at);
             totalResponseTime += responseTime;
