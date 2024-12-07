@@ -45,11 +45,7 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
     };
 
     // Calculate response time for issues
-    console.log("COUNTING ISSUES");
-    let cnt = 0;
     for (const issue of issues) {
-        cnt++;
-        console.log(`Issue ${cnt}`);
         if (issue.created_at && issue.closed_at) {
             const responseTime = getTimeDifferenceInHours(issue.created_at, issue.closed_at);
             totalResponseTime += responseTime;
@@ -161,14 +157,7 @@ function calculateOpenClosedRatio(issues: any[]): number {
 
         
     // Calculate and return the ratio
-    let ratio = openCount / closedCount;
-
-    //if there are more open issues than closed issues then it is not responsive
-    if(ratio < 1){
-        return 1;
-    } else {
-        return 0;
-    }
+    return openCount / closedCount;
 
 }
 
@@ -179,8 +168,8 @@ function calculateOpenClosedRatio(issues: any[]): number {
  */
 function calculateActiveMaintainers(contributors: any []): number {
     const now = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(now.getDate() - 30);
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(now.getDate() - 90);
 
     // Count the number of unique active maintainers
     let activeMaintainersCount = 0;
@@ -196,11 +185,11 @@ function calculateActiveMaintainers(contributors: any []): number {
     }
 
     //if there are more than 3 active maintainers then it is responsive
-    if(activeMaintainersCount > 3){
-        return 1;
-    } else {
+    if (activeMaintainersCount == 0) {
         return 0;
-    }
+    } else if ( activeMaintainersCount < 3) {
+        return 0.5;
+    } else return 1;
 }
 
 
