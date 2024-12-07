@@ -45,11 +45,11 @@ function calculateAverageResponseTime(issues: any[], pullRequests: any[]): numbe
     };
 
     // Calculate response time for issues
-    logger.info("COUNTING ISSUES");
+    console.log("COUNTING ISSUES");
     let cnt = 0;
     for (const issue of issues) {
         cnt++;
-        logger.debug(`Issue ${cnt}`);
+        console.log(`Issue ${cnt}`);
         if (issue.created_at && issue.closed_at) {
             const responseTime = getTimeDifferenceInHours(issue.created_at, issue.closed_at);
             totalResponseTime += responseTime;

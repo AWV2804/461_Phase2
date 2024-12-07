@@ -68,9 +68,9 @@ async function checkDocumentationQuality(repoPath: string): Promise<number> {
         }
         logger.debug(`README Path: ${readmePath}`);
         const readmeContent = fs.readFileSync(readmePath, 'utf8');
-        logger.debug('README.md content:', readmeContent);
+        console.log('README.md content:', readmeContent.substring(0, 200));
         const plainTextContent = await marked.parse(readmeContent); // Convert Markdown to plain text for analysis
-        logger.debug('Plain Text Content:', plainTextContent);
+        console.log('Plain Text Content:', plainTextContent.substring(0, 200));
         const readabilityScores = calculateReadability(plainTextContent);
         logger.debug(`Readability Scores - Ease: ${readabilityScores.ease}, Grade Level: ${readabilityScores.gradeLevel}`);
         //console.log(`Readability Scores - Ease: ${readabilityScores.ease}, Grade Level: ${readabilityScores.gradeLevel}`);
