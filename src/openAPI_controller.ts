@@ -152,7 +152,8 @@ app.use((req, res, next) => {
 
 
 app.delete('/reset', async (req, res) => {
-    console.log(`Reset: ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Reset: ${body}`);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
@@ -218,7 +219,8 @@ app.delete('/reset', async (req, res) => {
 });
 
 app.post('/package/byRegEx', async (req, res) => {
-    console.log(`Regex: ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Regex: ${body}`);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Authentication failed due to invalid or missing AuthenticationToken');
@@ -305,7 +307,8 @@ app.get('/package//rate', async (req, res) => {
 });
 
 app.get('/package/:id/rate', async (req, res) => {
-    console.log(`Rate package endpoint ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Rate: ${body}`);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
@@ -373,7 +376,8 @@ app.get('/package/:id/rate', async (req, res) => {
 });
 
 app.get('/package/:id?', async (req, res) => {
-    console.log(`Download: ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Download: ${body}`);
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
         if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -432,7 +436,8 @@ app.get('/package/:id?', async (req, res) => {
 });
 
 app.post('/package', async (req, res) => {
-    console.log(`Upload: ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Upload: ${body}`);
     const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!token || token == '' || token == null || token.trim() == '') {
         logger.error('Missing Authentication Header');
@@ -811,7 +816,8 @@ app.post('/package', async (req, res) => {
 });
 
 app.post('/package/:id', async (req, res) => { 
-    console.log('Updating package: ', req.body);
+    const body = JSON.stringify(req.body);
+    console.log(`Update: ${body}`);
     logger.debug('Updating package:', req.body);
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
@@ -1153,7 +1159,8 @@ app.post('/package/:id', async (req, res) => {
 });
 
 app.put('/authenticate', async (req, res) => {
-    console.log(`Auth: ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Auth: ${body}`);
     try {
         const { User, Secret } = req.body;
         // Validate request structure
@@ -1232,7 +1239,8 @@ app.get('/package//cost', async (req, res) => {
 
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
-    console.log(`Cost: ${req.body}`);
+    const body = JSON.stringify(req.body);
+    console.log(`Cost: ${body}`);
     const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
     const dependencyParam = req.query.dependency;
     const dependency = dependencyParam === 'true'; // Defaults to false
