@@ -130,7 +130,7 @@ const swaggerOptions = {
             version: '1.0.0',
             servers: [
                 {
-                    url: `localhost:${BACKEND_PORT}`, 
+                    url: `http://localhost:${BACKEND_PORT}`, 
                 },
                 {
                     url: `https://${process.env.EC2_IP_ADDRESS}`,
@@ -150,7 +150,20 @@ app.use((req, res, next) => {
     next();
 });
 
-
+/**
+ * @swagger
+ * /reset:
+ *   delete:
+ *     summary: Reset the registry
+ *     description: Resets the registry if the user has admin permissions.
+ *     responses:
+ *       200:
+ *         description: Registry has been reset.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       500:
+ *         description: Error deleting database.
+ */
 app.delete('/reset', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Reset: ${body}`);
@@ -218,6 +231,22 @@ app.delete('/reset', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /package/byRegEx:
+ *   post:
+ *     summary: Find packages by regular expression
+ *     description: Finds packages that match the given regular expression.
+ *     responses:
+ *       200:
+ *         description: Packages found.
+ *       400:
+ *         description: Malformed request.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       500:
+ *         description: Error retrieving packages.
+ */
 app.post('/package/byRegEx', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Regex: ${body}`);
@@ -281,7 +310,31 @@ app.post('/package/byRegEx', async (req, res) => {
     return res.status(200).json(formattedPackages);
 });
 
-
+/**
+ * @swagger
+ * /package/{id}/rate:
+ *   get:
+ *     summary: Rate a package
+ *     description: Rates a package based on its ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The package ID
+ *     responses:
+ *       200:
+ *         description: Package rated successfully.
+ *       400:
+ *         description: Missing package ID.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       404:
+ *         description: Package not found.
+ *       500:
+ *         description: Error retrieving package.
+ */
 app.get('/package//rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
@@ -306,6 +359,31 @@ app.get('/package//rate', async (req, res) => {
     return res.status(400).send('Missing package ID');
 });
 
+/**
+ * @swagger
+ * /package/{id}:
+ *   get:
+ *     summary: Retrieve package information
+ *     description: Retrieves information about a package based on its ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The package ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved package content and info.
+ *       400:
+ *         description: Missing or invalid package ID.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       404:
+ *         description: Package not found.
+ *       500:
+ *         description: Error fetching package.
+ */
 app.get('/package/:id/rate', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Rate: ${body}`);
@@ -375,6 +453,31 @@ app.get('/package/:id/rate', async (req, res) => {
     return res.status(200).send(jsonResponse);
 });
 
+/**
+ * @swagger
+ * /package/{id}:
+ *   get:
+ *     summary: Retrieve package information
+ *     description: Retrieves information about a package based on its ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The package ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved package content and info.
+ *       400:
+ *         description: Missing or invalid package ID.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       404:
+ *         description: Package not found.
+ *       500:
+ *         description: Error fetching package.
+ */
 app.get('/package/:id?', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Download: ${body}`);
@@ -435,6 +538,51 @@ app.get('/package/:id?', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /package:
+ *   post:
+ *     summary: Upload a package and calculate its score
+ *     description: Uploads a package either by content or URL, calculates its score, and stores it in the database.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               Name:
+ *                 type: string
+ *                 description: The name of the package.
+ *               Content:
+ *                 type: string
+ *                 description: The base64-encoded content of the package.
+ *               URL:
+ *                 type: string
+ *                 description: The URL of the package.
+ *               debloat:
+ *                 type: boolean
+ *                 description: Whether to perform tree shaking on the package.
+ *               secret:
+ *                 type: boolean
+ *                 description: Whether the package is secret.
+ *               JSProgram:
+ *                 type: string
+ *                 description: The JavaScript program associated with the package.
+ *     responses:
+ *       201:
+ *         description: Package uploaded successfully.
+ *       400:
+ *         description: Invalid request data.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       409:
+ *         description: Package already exists.
+ *       424:
+ *         description: Package rating too low.
+ *       500:
+ *         description: Error uploading package.
+ */
 app.post('/package', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Upload: ${body}`);
@@ -815,6 +963,67 @@ app.post('/package', async (req, res) => {
     
 });
 
+/**
+ * @swagger
+ * /package/{id}:
+ *   post:
+ *     summary: Update a package
+ *     description: Updates an existing package with new content or URL.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The package ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               metadata:
+ *                 type: object
+ *                 properties:
+ *                   Name:
+ *                     type: string
+ *                     description: The name of the package.
+ *                   Version:
+ *                     type: string
+ *                     description: The version of the package.
+ *                   ID:
+ *                     type: string
+ *                     description: The package ID.
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   Content:
+ *                     type: string
+ *                     description: The base64-encoded content of the package.
+ *                   URL:
+ *                     type: string
+ *                     description: The URL of the package.
+ *                   debloat:
+ *                     type: boolean
+ *                     description: Whether to perform tree shaking on the package.
+ *                   secret:
+ *                     type: boolean
+ *                     description: Whether the package is secret.
+ *     responses:
+ *       200:
+ *         description: Package updated successfully.
+ *       400:
+ *         description: Invalid request data.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       404:
+ *         description: Package not found.
+ *       409:
+ *         description: Version already exists.
+ *       500:
+ *         description: Error updating package.
+ */
 app.post('/package/:id', async (req, res) => { 
     const body = JSON.stringify(req.body);
     console.log(`Update: ${body}`);
@@ -1158,6 +1367,44 @@ app.post('/package/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /authenticate:
+ *   put:
+ *     summary: Authenticate a user
+ *     description: Authenticates a user and returns a bearer token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               User:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                     description: The username.
+ *                   isAdmin:
+ *                     type: boolean
+ *                     description: Whether the user is an admin.
+ *               Secret:
+ *                 type: object
+ *                 properties:
+ *                   password:
+ *                     type: string
+ *                     description: The user's password.
+ *     responses:
+ *       200:
+ *         description: User authenticated successfully.
+ *       400:
+ *         description: Malformed AuthenticationRequest.
+ *       401:
+ *         description: Invalid username or password.
+ *       500:
+ *         description: Bad Request.
+ */
 app.put('/authenticate', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Auth: ${body}`);
@@ -1206,7 +1453,6 @@ app.put('/authenticate', async (req, res) => {
       }
 });
 
-
 app.get('/package//cost', async (req, res) => {
     // Extract Authentication Token
     const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
@@ -1237,6 +1483,36 @@ app.get('/package//cost', async (req, res) => {
     return res.status(400).send('Missing or invalid Package ID');
 });
 
+/**
+ * @swagger
+ * /package/{id}/cost:
+ *   get:
+ *     summary: Get the cost of a package
+ *     description: Retrieves the cost of a package based on its ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The package ID
+ *       - in: query
+ *         name: dependency
+ *         schema:
+ *           type: boolean
+ *         description: Whether to include dependencies in the cost calculation.
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved package cost.
+ *       400:
+ *         description: Missing or invalid Package ID.
+ *       403:
+ *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       404:
+ *         description: Package not found.
+ *       500:
+ *         description: Server error while retrieving package cost.
+ */
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
     const body = JSON.stringify(req.body);
@@ -1371,6 +1647,35 @@ app.get('/package/:id/cost', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /packages:
+ *   post:
+ *     summary: Search for packages
+ *     description: Searches for packages based on the provided queries.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 Name:
+ *                   type: string
+ *                   description: The name of the package.
+ *                 Version:
+ *                   type: string
+ *                   description: The version of the package.
+ *     responses:
+ *       200:
+ *         description: Packages found.
+ *       400:
+ *         description: Invalid request body.
+ *       500:
+ *         description: Internal Server Error.
+ */
 app.post('/packages', async (req, res) => {
     console.log("HI I AM HERE");
     logger.debug("HI I AM HERE");
@@ -1490,6 +1795,16 @@ app.post('/packages', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /tracks:
+ *   get:
+ *     summary: Get implemented track
+ *     description: Retrieves the implemented track.
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved track.
+ */
 app.get('/tracks', async (req, res) => {
     const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
     return res.status(200).json({ plannedTracks });
@@ -1497,6 +1812,39 @@ app.get('/tracks', async (req, res) => {
 
 /*------------------ Extra APIs not in spec ------------------*/
 
+/**
+ * @swagger
+ * /create-account:
+ *   post:
+ *     summary: Create a new user account
+ *     description: Creates a new user account.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username.
+ *               password:
+ *                 type: string
+ *                 description: The user's password.
+ *               isAdmin:
+ *                 type: boolean
+ *                 description: Whether the user is an admin.
+ *               userGroup:
+ *                 type: string
+ *                 description: The user group.
+ *     responses:
+ *       200:
+ *         description: User created successfully.
+ *       400:
+ *         description: Invalid request data.
+ *       500:
+ *         description: Server error.
+ */
 app.post('/create-account', async (req, res) => {
     const { username, password, isAdmin, userGroup } = req.body;
 
@@ -1523,6 +1871,38 @@ app.post('/create-account', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /delete-account:
+ *   delete:
+ *     summary: Delete a user account
+ *     description: Deletes a user account.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username of the requester.
+ *               usernameToDelete:
+ *                 type: string
+ *                 description: The username of the account to delete.
+ *               isAdmin:
+ *                 type: boolean
+ *                 description: Whether the requester is an admin.
+ *     responses:
+ *       200:
+ *         description: User deleted successfully.
+ *       400:
+ *         description: Invalid request data.
+ *       403:
+ *         description: Invalid permissions - Not Admin.
+ *       500:
+ *         description: Server error.
+ */
 app.delete('/delete-account', async (req, res) => {
     const { username, usernameToDelete, isAdmin } = req.body;
     
@@ -1545,3 +1925,95 @@ app.delete('/delete-account', async (req, res) => {
         return res.status(500).json({ error: 'Server error' });
     }
 });
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Package:
+ *       type: object
+ *       properties:
+ *         Name:
+ *           type: string
+ *           description: The name of the package.
+ *         Content:
+ *           type: string
+ *           description: The base64-encoded content of the package.
+ *         URL:
+ *           type: string
+ *           description: The URL of the package.
+ *         debloat:
+ *           type: boolean
+ *           description: Whether to perform tree shaking on the package.
+ *         secret:
+ *           type: boolean
+ *           description: Whether the package is secret.
+ *         JSProgram:
+ *           type: string
+ *           description: The JavaScript program associated with the package.
+ *     Metadata:
+ *       type: object
+ *       properties:
+ *         Name:
+ *           type: string
+ *           description: The name of the package.
+ *         Version:
+ *           type: string
+ *           description: The version of the package.
+ *         ID:
+ *           type: string
+ *           description: The package ID.
+ *     User:
+ *       type: object
+ *       properties:
+ *         username:
+ *           type: string
+ *           description: The username.
+ *         password:
+ *           type: string
+ *           description: The user's password.
+ *         isAdmin:
+ *           type: boolean
+ *           description: Whether the user is an admin.
+ *         userGroup:
+ *           type: string
+ *           description: The user group.
+ *     AuthenticationRequest:
+ *       type: object
+ *       properties:
+ *         User:
+ *           type: object
+ *           properties:
+ *             name:
+ *               type: string
+ *               description: The username.
+ *             isAdmin:
+ *               type: boolean
+ *               description: Whether the user is an admin.
+ *         Secret:
+ *           type: object
+ *           properties:
+ *             password:
+ *               type: string
+ *               description: The user's password.
+ *     PackageQuery:
+ *       type: object
+ *       properties:
+ *         Name:
+ *           type: string
+ *           description: The name of the package.
+ *         Version:
+ *           type: string
+ *           description: The version of the package.
+ *     DeleteAccountRequest:
+ *       type: object
+ *       properties:
+ *         username:
+ *           type: string
+ *           description: The username of the requester.
+ *         usernameToDelete:
+ *           type: string
+ *           description: The username of the account to delete.
+ *         isAdmin:
+ *           type: boolean
+ *           description: Whether the requester is an admin.
+ */
