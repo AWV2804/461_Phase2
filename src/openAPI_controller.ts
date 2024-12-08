@@ -257,7 +257,7 @@ app.post('/package/byRegEx', async (req, res) => {
         }
         pkgs = packages;
     } catch (error) {
-        console.log(`Regex: ${RegEx} and Packages: ${pkgs}`);
+        console.log(`Regex: ${RegEx} and Packages: ${error}`);
         if(error.message && error.message.includes("Regular expression is invalid: number too big in {}")) {
             logger.error('Regular expression is invalid: number too big in {}');
             return res.status(400).send('Regular expression is invalid: number too big in {}');
@@ -368,7 +368,7 @@ app.get('/package/:id/rate', async (req, res) => {
         NetScoreLatency: scoreObject["NetScore_Latency"],
     };
     logger.debug('Package rated successfully:', jsonResponse);
-    return res.status(200).json(jsonResponse);
+    return res.status(200).send(jsonResponse);
 });
 
 app.get('/package/:id?', async (req, res) => {

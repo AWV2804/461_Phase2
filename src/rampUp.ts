@@ -327,8 +327,8 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
             return 0;
         }
 
-        if (rampUpScore < 0 || rampUpScore > 1) {
-            rampUpScore = 0.1;
+        while(rampUpScore > 1) {
+            rampUpScore = rampUpScore / 10;
         }
 
         // Clean up after analysis

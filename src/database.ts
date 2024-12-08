@@ -140,11 +140,12 @@ export async function getPackagesByNameOrHash(identifier: string, Package: mongo
 
 export async function findPackageByRegEx(regex: string, Package: mongoose.Model<any>) {
     try {
+        const newRegex = `^${regex}`;
         // Apply the regex to both 'name' and 'README' fields
         const results = await Package.find({
             $or: [
-                { name: { $regex: regex, $options: 'i' } }, // Case-insensitive regex on 'name'
-                { README: { $regex: regex, $options: 'i' } } // Case-insensitive regex on 'README'
+                { name: { $regex: newRegex, $options: 'i' } }, // Case-insensitive regex on 'name'
+                { README: { $regex: newRegex, $options: 'i' } } // Case-insensitive regex on 'README'
             ],
         });
         return [true, results];
