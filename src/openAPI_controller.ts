@@ -245,6 +245,7 @@ app.post('/package/byRegEx', async (req, res) => {
     let pkgs;
     try {
         const [success, packages] = await db.findPackageByRegEx(RegEx, Package);
+        console.log(`Regex: ${RegEx} and Packages: ${packages}`);
         if (!success) {
             if(packages.message && packages.message.includes("Regular expression is invalid: number too big in {}")) {
                 logger.error('Regular expression is invalid: number too big in {}');
@@ -255,6 +256,7 @@ app.post('/package/byRegEx', async (req, res) => {
         }
         pkgs = packages;
     } catch (error) {
+        console.log(`Regex: ${RegEx} and Packages: ${pkgs}`);
         if(error.message && error.message.includes("Regular expression is invalid: number too big in {}")) {
             logger.error('Regular expression is invalid: number too big in {}');
             return res.status(400).send('Regular expression is invalid: number too big in {}');
@@ -301,6 +303,7 @@ app.get('/package//rate', async (req, res) => {
 });
 
 app.get('/package/:id/rate', async (req, res) => {
+    console.log(`Rate package endpoint ${req.body}`);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
     if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
         logger.error('Missing Authentication Header');
@@ -308,6 +311,7 @@ app.get('/package/:id/rate', async (req, res) => {
     }
     try {
         const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
+        console.log(`Rate package endpoint ${updatedToken} ${isAdmin} ${userGroup}`);
         if(updatedToken instanceof Error) {
             logger.error('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
@@ -316,17 +320,19 @@ app.get('/package/:id/rate', async (req, res) => {
             logger.error('You do not have the correct permissions to reset the registry.');
             return res.status(403).send('You do not have the correct permissions to reset the registry.')
         }
+        console.log(`Rate package endpoint is Admin`);
     } catch (error) {
         logger.error('Error verifying token:', error);
         return res.status(403).send('Invalid or expired token');
     }
     const packageId = req.params.id;
-    console.log(packageId);
+    console.log(`Rate package endpoint ${packageId}`);
     if(packageId.trim() === '' || packageId == null || packageId == undefined || !packageId) {
         logger.error('Missing package ID');
         return res.status(400).send('Missing package ID');
     }
     const packageInfo = await db.getPackagesByNameOrHash(packageId, Package);
+    console.log(`Rate package endpoint ${packageInfo} ${packageId}`);
     if (!packageInfo[0] && packageInfo[1][0] == -1) {
         logger.error('Package not found:', packageInfo[1]);
         return res.status(404).send('Package not found: ' + packageInfo[1]);
@@ -335,7 +341,7 @@ app.get('/package/:id/rate', async (req, res) => {
         return res.status(500).send(`Error retrieving package: ${packageInfo[1]}`);
     }
     const pkg = packageInfo[1] as any[];
-    console.log(pkg[0]["score"]);
+    console.log(`Rate package endpoint: ${pkg[0]["score"]} ${packageId}`);
     const scoreObject = JSON.parse(pkg[0]["score"]);
     const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
     if(nullFields.length > 0) {
