@@ -255,7 +255,7 @@ export class metric_manager {
             Promise.resolve(this.dependency_pinning_calc()) 
         ]);
 
-        console.log(`metric array: ${metric_array}`);
+        console.log(metric_array);
 
         // this.net_score = metric_array[4] * (.3*metric_array[3] + .1*metric_array[1] + .05*metric_array[0] + .3*metric_array[2] + .1*metric_array[5] + .15*metric_array[6]);
         this.net_score = metric_array[4] * (.05*metric_array[0] + .2*metric_array[1] + .4*metric_array[2] + .05*metric_array[3] + .1*metric_array[5] + .2*metric_array[6]);
@@ -263,8 +263,8 @@ export class metric_manager {
         this.net_score_latency = roundToNumDecimalPlaces(endTime - startTime, 3);
         
         // Calculate pull_request_code metric
-        const pullRequestCodeMetric = this.calculatePullRequestCodeMetric();
-        metric_array.push(pullRequestCodeMetric);
+        // const pullRequestCodeMetric = this.calculatePullRequestCodeMetric();
+        // metric_array.push(pullRequestCodeMetric);
 
         return metric_array;
     }

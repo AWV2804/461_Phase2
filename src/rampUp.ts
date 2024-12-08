@@ -225,17 +225,17 @@ function calculateReadability(textContent: string): { ease: number } {
  * @throws Will log an error message if the README.md file is not found or if an error occurs during the process.
  */
 async function checkDocumentationQuality(repoPath: string): Promise<number> {
-    console.log('Checking documentation quality...');
     try {
         let readmePath = '';
         for (const file of possibleReadmeFiles) {
             const currentReadmePath = path.join(repoPath.toString(), file);
             if (fs.existsSync(currentReadmePath)) {
+                console.log('README.md found:', currentReadmePath);
                 readmePath = currentReadmePath;  // Assign the path when the file exists
                 break;  // Exit the loop once a valid README is found
             }
         }
-        
+
         if (!fs.existsSync(readmePath)) {
             logger.error('README.md not found.');
             return 0;
@@ -316,7 +316,6 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
             //console.log("Repository cloned successfully.");
 
             // Check documentation quality
-            console.log('Checking documentation quality...');
             rampUpScore = await checkDocumentationQuality(repoPath);
             logger.debug(`Ramp-Up Score (GitHub): ${rampUpScore}`);
             console.log(`Ramp-Up Score (GitHub): ${rampUpScore}`);
