@@ -163,8 +163,14 @@ app.use((req, res, next) => {
  *         description: You do not have the correct permissions to reset the registry.
  *       403:
  *         description: Missing or invalid authentication token, or insufficient permissions.
- *       500:
- *         description: Error deleting database.
+ *     parameters:
+ *       - name: X-Authorization
+ *         description: ""
+ *         schema:
+ *          $ref: '#/components/schemas/AuthenticationToken'
+ *      in: header
+ *      required: true
+ * 
  */
 app.delete('/reset', async (req, res) => {
     const body = JSON.stringify(req.body);
@@ -1972,95 +1978,312 @@ app.delete('/delete-account', async (req, res) => {
         return res.status(500).json({ error: 'Server error' });
     }
 });
+
 /**
  * @swagger
- * components:
- *   schemas:
- *     Package:
- *       type: object
- *       properties:
- *         Name:
- *           type: string
- *           description: The name of the package.
- *         Content:
- *           type: string
- *           description: The base64-encoded content of the package.
- *         URL:
- *           type: string
- *           description: The URL of the package.
- *         debloat:
- *           type: boolean
- *           description: Whether to perform tree shaking on the package.
- *         secret:
- *           type: boolean
- *           description: Whether the package is secret.
- *         JSProgram:
- *           type: string
- *           description: The JavaScript program associated with the package.
- *     Metadata:
- *       type: object
- *       properties:
- *         Name:
- *           type: string
- *           description: The name of the package.
- *         Version:
- *           type: string
- *           description: The version of the package.
- *         ID:
- *           type: string
- *           description: The package ID.
- *     User:
- *       type: object
- *       properties:
- *         username:
- *           type: string
- *           description: The username.
- *         password:
- *           type: string
- *           description: The user's password.
- *         isAdmin:
- *           type: boolean
- *           description: Whether the user is an admin.
- *         userGroup:
- *           type: string
- *           description: The user group.
- *     AuthenticationRequest:
- *       type: object
- *       properties:
- *         User:
- *           type: object
- *           properties:
- *             name:
- *               type: string
- *               description: The username.
- *             isAdmin:
- *               type: boolean
- *               description: Whether the user is an admin.
- *         Secret:
- *           type: object
- *           properties:
- *             password:
- *               type: string
- *               description: The user's password.
- *     PackageQuery:
- *       type: object
- *       properties:
- *         Name:
- *           type: string
- *           description: The name of the package.
- *         Version:
- *           type: string
- *           description: The version of the package.
- *     DeleteAccountRequest:
- *       type: object
- *       properties:
- *         username:
- *           type: string
- *           description: The username of the requester.
- *         usernameToDelete:
- *           type: string
- *           description: The username of the account to delete.
- *         isAdmin:
- *           type: boolean
- *           description: Whether the requester is an admin.
- */
+    components:
+    schemas:
+        Package:
+        required:
+        - metadata
+        - data
+        type: object
+        properties:
+            metadata:
+            $ref: '#/components/schemas/PackageMetadata'
+            data:
+            $ref: '#/components/schemas/PackageData'
+        PackageMetadata:
+        description: |-
+            The "Name" and "Version" are used as a unique identifier pair when uploading a package.
+
+            The "ID" is used as an internal identifier for interacting with existing packages.
+        required:
+        - Name
+        - Version
+        - ID
+        type: object
+        properties:
+            Name:
+            $ref: '#/components/schemas/PackageName'
+            Version:
+            description: Package version
+            type: string
+            example: 1.2.3
+            ID:
+            $ref: '#/components/schemas/PackageID'
+
+        PackageData:
+        description: |-
+            This is a "union" type.
+            - On package upload, either Content or URL should be set. If both are set, returns 400.
+            - On package update, exactly one field should be set.
+            - On download, the Content field should be set.
+        type: object
+        properties:
+            Name:
+            description: Name of a program provided with the Content.
+            Content:
+            description: |-
+                Package contents. This is the zip file uploaded by the user. (Encoded as text using a Base64 encoding).
+
+                This will be a zipped version of an npm package's GitHub repository, minus the ".git/" directory." It will, for example, include the "package.json" file that can be used to retrieve the project homepage.
+
+                This string will usually be massive, and we use an abbreviated version of the string for the examples in this spec. To see a full-sized example of a base64 encoded repo, check the example posted on Brightspace under Project -> Phase 2 -> Specification
+
+                See https://docs.npmjs.com/cli/v7/configuring-npm/package-json#homepage.
+            type: string
+            URL:
+            description: |
+                Package URL (for use in public ingest).
+                
+                Note: If the NPM url points to a specific version, you should use that version's content.
+            type: string
+            debloat:
+            description: If true, remove uneccessary bloat from the package. You may wish to read about tree shaking, minification, etc
+            type: boolean
+            JSProgram:
+            description: A JavaScript program (for use with sensitive modules).
+            type: string
+        User:
+        description: ""
+        required:
+        - name
+        - isAdmin
+        type: object
+        properties:
+            name:
+            description: ""
+            type: string
+            example: Alfalfa
+            isAdmin:
+            description: Is this user an admin?
+            type: boolean
+        UserAuthenticationInfo:
+        description: Authentication info for a user
+        required:
+        - password
+        type: object
+        properties:
+            password:
+            description: "Password for a user. Per the spec, this should be a \"strong\"\
+                \ password."
+            type: string
+        PackageID:
+        description: "Unique ID for use with the /package/{id} endpoint."
+        example: "123567192081501"
+        type: string
+        pattern: '^[a-zA-Z0-9\-]+$'
+
+        PackageCost:
+        description: Package Cost is the collection of total cost of package given in terms of total Megabytes (mb) that needs to be downloaded. It consists of a map with key of the map as the package ID and it's value consists of total cost as describe below.
+
+        type: object
+        additionalProperties:
+            type: object
+            properties:
+            standaloneCost:
+                type: number
+                description: The stand alone cost of this package excluding dependencies. This field is only required in case `dependency = true`, in the request.
+            totalCost:
+                type: number
+                description: |
+                The total cost of the package. When `dependency` is not set, this should return the standalone cost,
+                and when it is set, this field should return the sum of the costs of all the dependencies.
+
+                For example:
+
+                    Package 1 -> Package 2 -> Package 3, Package 4.
+
+                    If dependency = false
+                        totalCost = (Package 1).size()
+                    If dependency = true
+                    totalCost = (Package 1 + Package 2 + Package 3 + Package 4).size()
+
+            required:
+            - totalCost
+
+
+
+
+        PackageRating:
+        description: |-
+            Package rating (cf. Project 1).
+
+            If the Project 1 that you inherited does not support one or more of the original properties, denote this with the value "-1".
+        required:
+        - RampUp
+        - Correctness
+        - BusFactor
+        - ResponsiveMaintainer
+        - LicenseScore
+        - GoodPinningPractice
+        - PullRequest
+        - NetScore
+        - RampUpLatency
+        - CorrectnessLatency
+        - BusFactorLatency
+        - ResponsiveMaintainerLatency
+        - LicenseScoreLatency
+        - GoodPinningPracticeLatency
+        - PullRequestLatency
+        - NetScoreLatency
+        type: object
+        properties:
+            BusFactor:
+            format: double
+            description: ""
+            type: number
+            BusFactorLatency:
+            format: double
+            description: ""
+            type: number
+            Correctness:
+            format: double
+            description: ""
+            type: number
+            CorrectnessLatency:
+            format: double
+            description: ""
+            type: number
+            RampUp:
+            format: double
+            description: ""
+            type: number
+            RampUpLatency:
+            format: double
+            description: ""
+            type: number
+            ResponsiveMaintainer:
+            format: double
+            description: ""
+            type: number
+            ResponsiveMaintainerLatency:
+            format: double
+            description: ""
+            type: number
+            LicenseScore:
+            format: double
+            description: ""
+            type: number
+            LicenseScoreLatency:
+            format: double
+            description: ""
+            type: number
+            GoodPinningPractice:
+            format: double
+            description: "The fraction of its dependencies that are pinned to at least\
+                \ a specific major+minor version, e.g. version 2.3.X of a package. (If\
+                \ there are zero dependencies, they should receive a 1.0 rating. If there\
+                \ are two dependencies, one pinned to this degree, then they should receive\
+                \ a Â½ = 0.5 rating)."
+            type: number
+            GoodPinningPracticeLatency:
+            format: double
+            description: ""
+            type: number
+            PullRequest:
+            format: double
+            description: The fraction of project code that was introduced through pull
+                requests with a code review.
+            type: number
+            PullRequestLatency:
+            format: double
+            description: The fraction of project code that was introduced through pull
+                requests with a code review.
+            type: number
+            NetScore:
+            format: double
+            description: Scores calculated from other seven metrics.
+            type: number
+            NetScoreLatency:
+            format: double
+            description: Scores calculated from other seven metrics.
+            type: number
+        PackageHistoryEntry:
+        description: One entry of the history of this package.
+        required:
+        - User
+        - Date
+        - PackageMetadata
+        - Action
+        type: object
+        properties:
+            User:
+            $ref: '#/components/schemas/User'
+            description: ""
+            Date:
+            format: date-time
+            description: Date of activity using ISO-8601 Datetime standard in UTC format.
+            type: string
+            example: 2023-03-23T23:11:15Z
+            PackageMetadata:
+            $ref: '#/components/schemas/PackageMetadata'
+            description: ""
+            Action:
+            description: ""
+            enum:
+            - CREATE
+            - UPDATE
+            - DOWNLOAD
+            - RATE
+            type: string
+        PackageName:
+        description: |-
+            Name of a package.
+
+            - Names should only use typical "keyboard" characters.
+            - The name "*" is reserved. See the `/packages` API for its meaning.
+        type: string
+        AuthenticationToken:
+        description: "The spec permits you to use any token format you like. You could,\
+            \ for example, look into JSON Web Tokens (\"JWT\", pronounced \"jots\"): https://jwt.io."
+        type: string
+        AuthenticationRequest:
+        description: ""
+        required:
+        - User
+        - Secret
+        type: object
+        properties:
+            User:
+            $ref: '#/components/schemas/User'
+            description: ""
+            Secret:
+            $ref: '#/components/schemas/UserAuthenticationInfo'
+            description: ""
+        SemverRange:
+        description: ""
+        type: string
+        example: |-
+            Exact (1.2.3)
+            Bounded range (1.2.3-2.1.0)
+            Carat (^1.2.3)
+            Tilde (~1.2.0)
+        PackageQuery:
+        description: ""
+        required:
+        - Name
+        type: object
+        properties:
+            Version:
+            $ref: '#/components/schemas/SemverRange'
+            description: ""
+            Name:
+            $ref: '#/components/schemas/PackageName'
+            description: ""
+        EnumerateOffset:
+        description: Offset in pagination.
+        type: string
+        example: "1"
+        PackageRegEx:
+        description: ""
+        required:
+        - RegEx
+        type: object
+        properties:
+            RegEx:
+            description: A regular expression over package names and READMEs that is
+                used for searching for a package
+            type: string
+**/
