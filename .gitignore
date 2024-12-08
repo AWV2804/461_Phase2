@@ -1,7 +1,6 @@
 *.js
 yarn.lock
 node_modules/
-*.json
 .env
 coverage/*
 contributors.json
