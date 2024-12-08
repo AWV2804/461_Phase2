@@ -101,15 +101,15 @@ app.use(express.urlencoded({ limit: '200mb', extended: true }));
 dotenv.config();
 // Frontend connnection setup
 const FRONTEND_PORT = process.env.PORT || 3001;
+// Backend config setup
+const BACKEND_PORT = process.env.REACT_APP_BACKEND_PORT || 3000;
 app.use(cors({
-    origin: [`http://localhost:${FRONTEND_PORT}`, `http://${process.env.EC2_IP_ADDRESS}:${FRONTEND_PORT}`],// Frontend's URL
+    origin: [`http://localhost:${FRONTEND_PORT}`, `http://${process.env.EC2_IP_ADDRESS}:${FRONTEND_PORT}`, `http://${process.env.EC2_IP_ADDRESS}:${BACKEND_PORT}`],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true, // If you need to send cookies or auth headers
   }));
 console.log(`Frontend is running on port ${FRONTEND_PORT}`);
 
-// Backend config setup
-const BACKEND_PORT = process.env.REACT_APP_BACKEND_PORT || 3000;
 
 app.listen(BACKEND_PORT, () => {
     console.log(`Server is running on port ${BACKEND_PORT}`);
