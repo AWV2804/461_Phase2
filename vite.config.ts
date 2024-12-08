@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   test: {
-    exclude: ['test/testing_data/**', 'node_modules', 'test/frontend_e2e/**'],
+    exclude: ['test/testing_data/**', 'node_modules', 'test/frontend_e2e/**', 'test/postman_tests/**'],
     include: ['test/**/**'], // Include .jsx and .tsx files
     testTimeout: 40000,
     globals: true,
