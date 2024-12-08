@@ -639,8 +639,9 @@ app.post('/package', async (req, res) => {
         // Handle the URL for the package
         logger.info('Processing package from URL');
         try {
-            if (URL.includes('npmjs.com')) {
-                URL = await util.processNPMUrl(URL);
+            let version;
+            if (URL.includes('npmjs')) {
+                [URL, version] = await util.processNPMUrl(URL);
             }
             logger.debug('Processing URL:', URL);
             const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
@@ -653,7 +654,30 @@ app.post('/package', async (req, res) => {
                 url: URL,
                 singleBranch: true,
                 depth: 1,
-            });
+            }); 
+            if (version != '-1') {
+                const refs = await git.listTags({ fs, dir: tempDir });
+
+                const patterns = [
+                    version,
+                    `v${version}`,
+                    `Version ${version}`,
+                    `version ${version}`,
+                ];
+
+                const matchedRef = refs.find((ref) => patterns.includes(ref));
+                if (!matchedRef) {
+                    logger.error('Error: Version not found');
+                    console.debug('Error: Version not found');
+                    return res.status(500);
+                }
+
+                await git.checkout({
+                    fs,
+                    dir: tempDir,
+                    ref: matchedRef,
+                });
+            }
 
             const packageJsonPath = path.join(tempDir, 'package.json');
             
@@ -835,7 +859,7 @@ app.post('/package/:id', async (req, res) => {
         const packageID = metadata['ID'];
         const secret = data['secret'];
         const packageName = metadata['Name'];
-        const version = metadata['Version'];
+        let version = metadata['Version'];
         let debloat = data['debloat'] ? true : false;
         let isUrl = false;
         let content = null;
@@ -849,7 +873,11 @@ app.post('/package/:id', async (req, res) => {
                 // if the url is npm, change it to github url
                 if (url.includes('npmjs.com')) {
                     console.log('before process url: ', url);
-                    url = await util.processNPMUrl(url);
+                    let npmVersion;
+                    [url, npmVersion] = await util.processNPMUrl(url);
+                    if (npmVersion != '-1') {
+                        version = npmVersion;
+                    }
                     console.log('after process url: ', url);
                     if (url == null) { // if the github url could not be extracted
                         logger.info('Invalid URL');

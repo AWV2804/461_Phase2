@@ -141,18 +141,16 @@ export async function processGithubURL(url: string, version: string): Promise<st
     }
 }
 
-/**
- * Processes the given NPM package URL to extract the GitHub repository URL.
- *
- * @param url - The URL of the NPM package to process.
- * @returns A promise that resolves to the GitHub repository URL as a string, or null if no repository field is found or an error occurs.
- *
- * @throws Will log an error message if the request to the URL fails or if the repository field is not found.
- */
-export async function processNPMUrl(url: string): Promise<string | null> {
+export async function processNPMUrl(url: string): Promise<[string,  string] | null> {
     try {
+        const npmURL = new URL(url);
         const packageName = url.split('/').pop(); // Extract package name from URL
         const npmRegistryUrl = `https://registry.npmjs.org/${packageName}`;
+        const versionMatch = npmURL.pathname.match(/\/([^/]+)\/v\/(\d+\.\d+\.\d+)/);
+        let version = "-1";
+        if (versionMatch) {
+            version = versionMatch[1];
+        }
         const response = await axios.get(npmRegistryUrl);
         console.log('response worked, url:' , url);
         const repo = response.data.repository;
@@ -162,7 +160,7 @@ export async function processNPMUrl(url: string): Promise<string | null> {
             const githubUrl = repo.url.replace(/^git\+/, '').replace(/\.git$/,'');
             logger.info('Properly extracted github url from npm: ', githubUrl);
             console.log('github url:', githubUrl);
-            return githubUrl;
+            return [githubUrl, version];
         }
         console.log('No repository field found in package.json');
         logger.info('No repository field found in package.json');
