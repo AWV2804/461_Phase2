@@ -349,7 +349,7 @@ describe('GET /package/:id/rate', () => {
       {
         score: JSON.stringify({
           BusFactor: 8,
-          BusFactorLatency: 5,
+          BusFactor_Latency: 5,
           Correctness: 7,
           Correctness_Latency: 4,
           RampUp: 9,
@@ -358,10 +358,10 @@ describe('GET /package/:id/rate', () => {
           ResponsiveMaintainer_Latency: 2,
           License: 8,
           License_Latency: 1,
-          GoodPinningPractice: 7,
-          GoodPinningPractice_Latency: 2,
-          PullRequest: 8,
-          PullRequest_Latency: 3,
+          DependencyPinning: 7,
+          DependencyPinning_Latency: 2,
+          PullRequestsCodeMetric: 8,
+          PullRequestsCodeMetric_Latency: 3,
           NetScore: 7.5,
           NetScore_Latency: 1.2,
         }),
