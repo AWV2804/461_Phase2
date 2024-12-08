@@ -159,6 +159,8 @@ app.use((req, res, next) => {
  *     responses:
  *       200:
  *         description: Registry has been reset.
+ *       401:
+ *         description: You do not have the correct permissions to reset the registry.
  *       403:
  *         description: Missing or invalid authentication token, or insufficient permissions.
  *       500:
