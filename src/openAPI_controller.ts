@@ -133,7 +133,7 @@ const swaggerOptions = {
                     url: `http://localhost:${BACKEND_PORT}`, 
                 },
                 {
-                    url: `http://${process.env.EC2_IP_ADDRESS}:${BACKEND_PORT}`,
+                    url: `http://ec2-3-84-91-136.compute-1.amazonaws.com:8081`,
                 }
             ]
         }
