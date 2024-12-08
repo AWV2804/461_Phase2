@@ -775,6 +775,7 @@ app.post('/package', async (req, res) => {
                     try {
                         await s3.uploadContentToS3(base64Zip, packageId);
                     } catch (e) {
+                        console.log("error uploading content to s3");
                         logger.error('Error uploading content to S3:', e);
                         const removed = await db.removePackageByNameOrHash(packageId, Package);
                         if (removed == false) {
@@ -1344,7 +1345,8 @@ app.get('/package/:id/cost', async (req, res) => {
 app.post('/packages', async (req, res) => {
     const offset = req.query.offset as string | undefined;
     const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
-
+    console.log("HASBULA", req.body);
+    logger.debug("KIDS", req.body);
     // Validate request body
     if (!Array.isArray(packageQueries) || packageQueries.length === 0) {
         console.log(packageQueries);
