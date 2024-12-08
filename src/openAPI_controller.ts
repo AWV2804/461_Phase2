@@ -1228,6 +1228,7 @@ app.get('/package//cost', async (req, res) => {
 
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
+    console.log("Running console.log");
     const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
     const dependencyParam = req.query.dependency;
     const dependency = dependencyParam === 'true'; // Defaults to false
@@ -1261,16 +1262,20 @@ app.get('/package/:id/cost', async (req, res) => {
         logger.error('Missing or invalid Package ID');
         return res.status(400).send('Missing or invalid Package ID');
     }
+    console.log("Cost: input validation done");
 
     const [success, packageInfo] = await db.getPackagesByNameOrHash(packageId, Package);
     if(!success && packageInfo[0] == -1) {
+        console.log("Package does not exist");
         logger.error('Package does not exist');
         return res.status(404).send('Package does not exist');
     }
     if(!success) {
+        console.log("Error retrieving package info:", packageInfo);
         logger.error('Error retrieving package info:', packageInfo);
         return res.status(500).send('Server error while retrieving package info.');
     }
+
 
     if(packageInfo[0]["secret"] && packageInfo[0]["userGroup"] != usergroup) {
         logger.error("No access: Wrong user group");
@@ -1279,22 +1284,28 @@ app.get('/package/:id/cost', async (req, res) => {
     
     try {
         const buffer = await s3.requestContentFromS3(packageId);
+        console.log("cost: retrevied info from s3");
         const base64Content = buffer.toString('utf8');
 
         const binaryContent = Buffer.from(base64Content, 'base64');
+        console.log("cost: converted to base64");
 
         const zip = new AdmZip(binaryContent);
 
         const packageJsonEntry = zip.getEntry('package.json');
         if (!packageJsonEntry) {
-            logger.error(`package.json not found in package ${packageId}`);
+            logger.error(`cost: package.json not found in package ${packageId}`);
+            console.log("cost: package.json not found in package");
             return res.status(404).send('package.json not found in the package.');
         }
 
+        console.log("cost: package.json found in package");
         const packageJsonContent = packageJsonEntry.getData().toString('utf8');
         const packageJson: util.PackageJson = JSON.parse(packageJsonContent);
+        console.log("Cost: package.json parsed");
 
         const dependencies = packageJson.dependencies ? Object.keys(packageJson.dependencies) : [];
+        console.log("Cost: dependencies found");
 
         const standaloneCost = await util.calculatePackageSize(packageId);
         const packageCost: { [key: string]: { standaloneCost?: number; totalCost: number } } = {
@@ -1302,10 +1313,12 @@ app.get('/package/:id/cost', async (req, res) => {
                 totalCost: standaloneCost,
             },
         };
+        console.log("Cost: standalone cost calculated");
         if (dependency && dependencies.length > 0) {
             for (const depId of dependencies) {
                 try {
                     const depBuffer = await s3.requestContentFromS3(depId);
+                    console.log("Cost: retrieved dependency from s3");
                     const depBase64Content = depBuffer.toString('utf8');
 
                     const depBinaryContent = Buffer.from(depBase64Content, 'base64');
@@ -1315,6 +1328,7 @@ app.get('/package/:id/cost', async (req, res) => {
                     const depPackageJsonEntry = depZip.getEntry('package.json');
                     if (!depPackageJsonEntry) {
                         logger.error(`package.json not found in dependency package ${depId}`);
+                        console.log("Cost: package.json not found in dependency package");
                         continue;
                     }
 
@@ -1331,12 +1345,15 @@ app.get('/package/:id/cost', async (req, res) => {
                 }
             }
         }
+        console.log("cost success: ", packageCost);
         return res.status(200).json(packageCost);
     } catch (error: any) {
         if (error.name === 'NoSuchKey' || error.message.includes('NotFound')) { // AWS S3 specific error for missing objects
+            console.log("cost: no such key error");
             logger.error(`Package not found in S3: ${packageId}`);
             return res.status(404).send('Package not found in S3.');
         }
+        console.log("Cost: error retrieving package cost");
         logger.error('Error retrieving package cost:', error);
         return res.status(500).send('Server error while retrieving package cost.');
     }
