@@ -1343,10 +1343,13 @@ app.get('/package/:id/cost', async (req, res) => {
 });
 
 app.post('/packages', async (req, res) => {
-    const offset = req.query.offset as string | undefined;
-    const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
+    console.log("HI I AM HERE");
+    logger.debug("HI I AM HERE");
     console.log("HASBULA", req.body);
     logger.debug("KIDS", req.body);
+    const offset = req.query.offset as string | undefined;
+    const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
+
     // Validate request body
     if (!Array.isArray(packageQueries) || packageQueries.length === 0) {
         console.log(packageQueries);
