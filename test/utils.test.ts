@@ -84,13 +84,24 @@ describe('utils.ts', () => {
   describe('processNPMUrl', () => {
     it('should return the GitHub URL from NPM package data', async () => {
       vi.spyOn(axios, 'get').mockResolvedValue({
-        data: { repository: { url: 'https://github.com/bendrucker/smallest' } },
+        data: { repository: { url: 'git+https://github.com/owner/repo.git' } },
       });
 
-      const result = await processNPMUrl('https://www.npmjs.com/package/smallest');
-      expect(result).toStrictEqual(['https://github.com/bendrucker/smallest', '-1']);
+      const result = await processNPMUrl('https://registry.npmjs.org/package');
+      expect(result).toBe(['https://github.com/owner/repo', '-1']);
     });
   });
+
+  // describe('processNPMUrl', () => {
+  //   it('should return the GitHub URL from NPM package data', async () => {
+  //     vi.spyOn(axios, 'get').mockResolvedValue({
+  //       data: { repository: { url: 'https://github.com/bendrucker/smallest' } },
+  //     });
+
+  //     const result = await processNPMUrl('https://www.npmjs.com/package/smallest');
+  //     expect(result).toStrictEqual(['https://github.com/bendrucker/smallest', '-1']);
+  //   });
+  // });
 
   describe('calculatePackageSize', () => {
     it('should calculate and return package size in MB', async () => {
