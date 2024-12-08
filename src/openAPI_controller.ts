@@ -24,7 +24,6 @@
  * @requires esbuild
  * 
  * @constant {string[]} possibleReadmeFiles - List of possible README file names.
- * @constant {string} monkeyBusiness - A hardcoded bearer token for authentication.
  * @constant {object} app - Express application instance.
  * @constant {number} FRONTEND_PORT - Port number for the frontend connection.
  * @constant {number} BACKEND_PORT - Port number for the backend server.
@@ -44,6 +43,7 @@
  * @function app.post('/create-account') - Endpoint to create a new user account.
  * @function app.delete('/delete-account') - Endpoint to delete a user account.
  */
+
 import express from 'express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
@@ -62,9 +62,6 @@ import path from 'path';
 import * as s3 from './s3_utils.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { ConnectionClosedEvent } from 'mongodb';
-import { json } from 'stream/consumers';
-import { log } from 'console';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -80,11 +77,13 @@ const possibleReadmeFiles = [
     'Readme.md'
 ];
 
-export const app = express();
+const app = express();
 export let packageDB;
 export let userDB;
 let Package;
 let UserModel;
+
+// Function to initialize databases
 function initializeDatabases() {
   if (!packageDB) {
     console.log('Initializing packageDB...');
@@ -99,13 +98,14 @@ function initializeDatabases() {
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
 dotenv.config();
-// Frontend connnection setup
+
+// Frontend connection setup
 const FRONTEND_PORT = process.env.PORT || 3001;
 app.use(cors({
-    origin: [`http://localhost:${FRONTEND_PORT}`, `http://${process.env.EC2_IP_ADDRESS}:${FRONTEND_PORT}`],// Frontend's URL
+    origin: [`http://localhost:${FRONTEND_PORT}`, `http://${process.env.EC2_IP_ADDRESS}:${FRONTEND_PORT}`], // Frontend's URL
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true, // If you need to send cookies or auth headers
-  }));
+}));
 console.log(`Frontend is running on port ${FRONTEND_PORT}`);
 
 // Backend config setup
@@ -118,6 +118,7 @@ app.listen(BACKEND_PORT, () => {
 console.log(`OpenAPI_controller.ts(40): ADD "PORT=${FRONTEND_PORT}" and "REACT_APP_BACKEND_PORT=${BACKEND_PORT}" to your .env or things could potentially break. Then delete this console.log.`);
 console.log("Also add BACKEND_PORT to be forwarded in Vscode ports");
 
+// Swagger configuration
 const swaggerOptions = {
     swaggerDefinition: {
         openapi: '3.0.2',
@@ -130,7 +131,7 @@ const swaggerOptions = {
             version: '1.0.0',
             servers: [
                 {
-                    url: `localhost:${BACKEND_PORT}`, 
+                    url: `http://localhost:${BACKEND_PORT}`, 
                 },
                 {
                     url: `https://${process.env.EC2_IP_ADDRESS}`,
@@ -138,11 +139,13 @@ const swaggerOptions = {
             ]
         }
     },
-    apis: ['./src/*.ts'],
+    apis: ['./src/*.ts'], // Adjust the path as necessary
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+// Middleware to initialize databases and models
 app.use((req, res, next) => {
     initializeDatabases(); // Ensure the databases are initialized
     Package = packageDB[1].model('Package', db.packageSchema);
@@ -150,10 +153,15 @@ app.use((req, res, next) => {
     next();
 });
 
+// --------------------- Endpoints ---------------------
 
+/**
+ * @route DELETE /reset
+ * @desc Reset the registry to a system default state.
+ */
 app.delete('/reset', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken.trim() === '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -164,7 +172,7 @@ app.delete('/reset', async (req, res) => {
             logger.error('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
-        if(isAdmin != true) {
+        if(!isAdmin) {
             logger.error('You do not have the correct permissions to reset the registry.');
             return res.status(403).send('You do not have the correct permissions to reset the registry.');
         }
@@ -175,38 +183,33 @@ app.delete('/reset', async (req, res) => {
     }
     try {
         logger.info('Resetting registry...');
-        console.log(Package);
-        console.log(UserModel);
         const numPacks = await Package.countDocuments();
         const numUsers = await UserModel.countDocuments();
-        console.log(numPacks);
-        console.log(numUsers);
-        if (numPacks == 0 && numUsers == 1) {
+        if (numPacks === 0 && numUsers === 1) {
             logger.info('Registry is already empty');
             return res.status(200).send('Registry has been reset.');
         }
         let result;
         let result2;
-        if (numPacks != 0) {
+        if (numPacks !== 0) {
             result = await db.deleteDB(packageDB[1]);
         } else {
             result = [true, 'No collections to delete'];
         }
-        if (numUsers != 1) {
+        if (numUsers !== 1) {
             result2 = await db.deleteUsersExcept(UserModel);
         } else {
             result2 = [true, 'No collections to delete'];
         }
         await s3.clearS3Bucket();
-        console.log(`Registry values: ${result}, ${result2}`);
         logger.debug(`Registry values: ${result}, ${result2}`);
-        if (result[0] == true && result2[0] == true) {
+        if (result[0] && result2[0]) {
             logger.info('Registry is reset.');
             return res.status(200).send('Registry has been reset.');
-        } else if(result[0] == false) {
+        } else if(!result[0]) {
             logger.error('Error deleting database:', result[1]);
             return res.status(500).send('Error deleting database');
-        } else if(result2[0] == false) {
+        } else if(!result2[0]) {
             logger.error('Error deleting user:', result2[1]);
             return res.status(500).send('Error deleting user');
         }
@@ -216,10 +219,13 @@ app.delete('/reset', async (req, res) => {
     }
 });
 
+/**
+ * @route POST /package/byRegEx
+ * @desc Find packages by regular expression.
+ */
 app.post('/package/byRegEx', async (req, res) => {
-    console.log(req.body);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken.trim() === '') {
         logger.error('Authentication failed due to invalid or missing AuthenticationToken');
         return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
     }
@@ -229,9 +235,9 @@ app.post('/package/byRegEx', async (req, res) => {
             logger.error('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
-        if(isAdmin != true) {
+        if(!isAdmin) {
             logger.error('You do not have the correct permissions to reset the registry.');
-            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+            return res.status(403).send('You do not have the correct permissions to reset the registry.');
         }
         logger.info('Token verified');
     } catch (error) {
@@ -246,7 +252,6 @@ app.post('/package/byRegEx', async (req, res) => {
     let pkgs;
     try {
         const [success, packages] = await db.findPackageByRegEx(RegEx, Package);
-        console.log(`Regex: ${RegEx} and Packages: ${packages}`);
         if (!success) {
             if(packages.message && packages.message.includes("Regular expression is invalid: number too big in {}")) {
                 logger.error('Regular expression is invalid: number too big in {}');
@@ -257,7 +262,6 @@ app.post('/package/byRegEx', async (req, res) => {
         }
         pkgs = packages;
     } catch (error) {
-        console.log(`Regex: ${RegEx} and Packages: ${pkgs}`);
         if(error.message && error.message.includes("Regular expression is invalid: number too big in {}")) {
             logger.error('Regular expression is invalid: number too big in {}');
             return res.status(400).send('Regular expression is invalid: number too big in {}');
@@ -265,85 +269,59 @@ app.post('/package/byRegEx', async (req, res) => {
         logger.error('Error retrieving packages:', error);
         return res.status(500).send('Error retrieving packages');
     }
-    if(pkgs.length == 0) {
+    if(pkgs.length === 0) {
         logger.info('No packages found');
         return res.status(404).send('No packages found');
     }
-    const formattedPackages = pkgs.map((pkg: any) => ({
+    const formattedPackages = pkgs.map((pkg) => ({
         Version: pkg.version,
         Name: pkg.name,
-        ID: pkg.packageId, // Use packageId if available, fallback to id
+        ID: pkg.packageId || pkg.id, // Use packageId if available, fallback to id
     }));
     logger.debug('Packages found:', formattedPackages);
     return res.status(200).json(formattedPackages);
 });
 
-
-app.get('/package//rate', async (req, res) => {
-    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
-        logger.error('Missing Authentication Header');
-        return res.status(403).send('Missing Authentication Header');
-    }
-    try {
-        const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
-        if(updatedToken instanceof Error) {
-            logger.error('Invalid or expired token');
-            return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
-        }
-        if(isAdmin != true) {
-            logger.error('You do not have the correct permissions to reset the registry.');
-            return res.status(403).send('You do not have the correct permissions to reset the registry.')
-        }
-    } catch (error) {
-        logger.error('Error verifying token:', error);
-        return res.status(403).send('Invalid or expired token');
-    }
-    
-    return res.status(400).send('Missing package ID');
-});
-
+/**
+ * @route GET /package/:id/rate
+ * @desc Rate a specific package.
+ */
 app.get('/package/:id/rate', async (req, res) => {
-    console.log(`Rate package endpoint ${req.body}`);
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken.trim() === '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
     try {
         const {updatedToken, isAdmin, userGroup} = util.verifyToken(authToken);
-        console.log(`Rate package endpoint ${updatedToken} ${isAdmin} ${userGroup}`);
         if(updatedToken instanceof Error) {
             logger.error('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
-        if(isAdmin != true) {
+        if(!isAdmin) {
             logger.error('You do not have the correct permissions to reset the registry.');
-            return res.status(403).send('You do not have the correct permissions to reset the registry.')
+            return res.status(403).send('You do not have the correct permissions to reset the registry.');
         }
-        console.log(`Rate package endpoint is Admin`);
+        logger.info('Token verified');
     } catch (error) {
         logger.error('Error verifying token:', error);
         return res.status(403).send('Invalid or expired token');
     }
     const packageId = req.params.id;
-    console.log(`Rate package endpoint ${packageId}`);
-    if(packageId.trim() === '' || packageId == null || packageId == undefined || !packageId) {
+    if(!packageId || packageId.trim() === '') {
         logger.error('Missing package ID');
         return res.status(400).send('Missing package ID');
     }
     const packageInfo = await db.getPackagesByNameOrHash(packageId, Package);
-    console.log(`Rate package endpoint ${packageInfo} ${packageId}`);
-    if (!packageInfo[0] && packageInfo[1][0] == -1) {
+    if (!packageInfo[0] && packageInfo[1][0] === -1) {
         logger.error('Package not found:', packageInfo[1]);
         return res.status(404).send('Package not found: ' + packageInfo[1]);
     } else if(!packageInfo[0]) {
         logger.error('Error retrieving package:', packageInfo[1]);
         return res.status(500).send(`Error retrieving package: ${packageInfo[1]}`);
     }
-    const pkg = packageInfo[1] as any[];
-    console.log(`Rate package endpoint: ${pkg[0]["score"]} ${packageId}`);
-    const scoreObject = JSON.parse(pkg[0]["score"]);
+    const pkg = packageInfo[1];
+    const scoreObject = JSON.parse(pkg[0].score);
     const nullFields = Object.keys(scoreObject).filter(key => scoreObject[key] === null);
     if(nullFields.length > 0) {
         logger.error('Package rating choked');
@@ -371,22 +349,21 @@ app.get('/package/:id/rate', async (req, res) => {
     return res.status(200).json(jsonResponse);
 });
 
-app.get('/package/:id?', async (req, res) => {
+/**
+ * @route GET /package/:id
+ * @desc Retrieve package information.
+ */
+app.get('/package/:id', async (req, res) => {
     try {
         const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+        if(!authToken || authToken.trim() === '') {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
         const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
-        try {
-            if (updatedToken instanceof Error) {
-                logger.info('Invalid or expired token');
-                return res.status(403).send(`Invalid or expired token`);
-            }
-        } catch (error) {
-            logger.error('Error verifying token:', error);
-            return res.status(403).send('Invalid or expired token');
+        if (updatedToken instanceof Error) {
+            logger.info('Invalid or expired token');
+            return res.status(403).send(`Invalid or expired token`);
         }
         logger.info('Token verified');
         const packageID = req.params.id;
@@ -395,33 +372,33 @@ app.get('/package/:id?', async (req, res) => {
             return res.status(400).send('There is missing field(s) in the PackageID or it is formed improperly, or it is invalid.');
         }
         const packageInfo = await db.getPackagesByNameOrHash(packageID, Package);
-        if (!packageInfo[0] && packageInfo[1][0] == -1) {
+        if (!packageInfo[0] && packageInfo[1][0] === -1) {
             logger.error('Package not found:', packageInfo[1]);
             return res.status(404).send('Package not found: ' + packageInfo[1]);
         } else if(!packageInfo[0]) {
             logger.error('Error fetching package:', packageInfo[1]);
             return res.status(500).send('Error fetching package: ' + packageInfo[1]);
         }
-        if(packageInfo[1]["secret"] && packageInfo[1]["userGroup"] != userGroup) {
+        if(packageInfo[1].secret && packageInfo[1].userGroup !== userGroup) {
             logger.error("No access: Wrong user group");
             return res.status(403).send("No access: Wrong user group"); 
         }
-        const packInfo = packageInfo[1] as any[];
+        const packInfo = packageInfo[1];
         const packageContentBuffer = await s3.requestContentFromS3(packageID);
         const packageContent = packageContentBuffer.toString('utf-8');
         const jsonResponse = {
             metadata: {
-                Name: packInfo[0].name,
-                Version: packInfo[0].version,
+                Name: packInfo.name,
+                Version: packInfo.version,
                 ID: packageID,
             },
             data: {
                 Content: packageContent,
-                JSProgram: packInfo[0].jsProgram || '',
+                JSProgram: packInfo.jsProgram || '',
             },
         };
         logger.info('Successfully retrieved package content and info');
-        return res.status(200).send(jsonResponse);
+        return res.status(200).json(jsonResponse);
 
     } catch (error) {
         logger.error("Bad Request:", error);
@@ -429,9 +406,13 @@ app.get('/package/:id?', async (req, res) => {
     }
 });
 
+/**
+ * @route POST /package
+ * @desc Upload or Ingest a new package.
+ */
 app.post('/package', async (req, res) => {
     const token = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
-    if(!token || token == '' || token == null || token.trim() == '') {
+    if(!token || token.trim() === '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -442,9 +423,9 @@ app.post('/package', async (req, res) => {
             logger.error('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
-        if(isAdmin != true) {
+        if(!isAdmin) {
             logger.error('You do not have the correct permissions to upload to the database.');
-            return res.status(403).send('You do not have the correct permissions to upload to the database.')
+            return res.status(403).send('You do not have the correct permissions to upload to the database.');
         }
         newToken = updatedToken;
         isadmin = isAdmin;
@@ -466,15 +447,14 @@ app.post('/package', async (req, res) => {
     }
 
     if (Content) {
-        console.log("Processing package from content.");
         logger.info('Processing package from content');
         try {
             // Decode the base64-encoded zip file
             const buffer = Buffer.from(Content, 'base64');
-    
+
             // Load the zip file using adm-zip
             const zip = new AdmZip(buffer);
-    
+
             // Find the package.json file within the zip entries
             let packageJsonEntry = null;
             let readMeContent = '';
@@ -488,17 +468,15 @@ app.post('/package', async (req, res) => {
                     }
                 }
             });
-            console.log('Package JSON Entry:', packageJsonEntry);
             if (!packageJsonEntry) {
                 logger.error('package.json not found in the provided content.');
                 return res.status(400).json({ error: "package.json not found in the provided content." });
             }
             logger.info('package.json found in the provided content');  
+
             // Read and parse the package.json file
             const packageJsonContent = packageJsonEntry.getData().toString('utf8');
             const packageJson = JSON.parse(packageJsonContent);
-            console.log(packageJson, packageJsonContent);
-            // Extract the repository link and package name
             const repository = packageJson.repository;
             let repoUrl = '';
             if (typeof repository === 'string') {
@@ -506,40 +484,31 @@ app.post('/package', async (req, res) => {
             } else if (repository && repository.url) {
                 repoUrl = repository.url;
             }
-            console.log('Repository URL:', repoUrl);
             repoUrl = util.parseRepositoryUrl(repoUrl).toString();
-            logger.debug('Repository URL:', repoUrl);
-            console.log('Repository URL:', repoUrl);
             const packageName = packageJson.name;
-            console.log('Package Name:', packageName);
-            logger.debug('Package Name:', packageName);
-            // Log or use the extracted information as needed
+
+            // Debloat processing
             let base64Zip = '';
             const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
             fs.mkdirSync(tempDir, { recursive: true });
             if (debloat) {
                 logger.info('Debloating package');
-                // Extract files and perform tree shaking
                 await util.extractFiles(zip, tempDir);
                 await util.treeShakePackage(tempDir);
-
-                // Create a new ZIP file with tree-shaken code
                 const updatedZipBuffer = await util.createZipFromDir(tempDir);
-
-                // Encode the zip buffer as Base64
                 base64Zip = updatedZipBuffer.toString('base64');
-                console.log('Base64 Zip:', base64Zip);
             } else {
-                // If debloat is false, just zip the original content
                 const zipBuffer = zip.toBuffer();
                 base64Zip = zipBuffer.toString('base64');
             }
             fs.rmSync(tempDir, { recursive: true, force: true });
+
+            // Check if package already exists
             const pkg = await db.getPackagesByNameOrHash(packageName, Package);
-            if(pkg[0] == true) {
-                logger.debug(`Package ${packageName} already exists with score: ${pkg[1]["score"]}`);
-                const version = pkg[1]["version"];
-                const packageId = SHA256(packageName + version).toString();
+            if(pkg[0] === true) {
+                logger.debug(`Package ${packageName} already exists with score: ${pkg[1].score}`);
+                const version = pkg[1].version;
+                const packageId = SHA256(packageName + version).toString().substr(0, 12); // Truncate to 12 chars to mimic spec's numeric example
                 const jsonResponse = {
                     metadata: {
                         Name: packageName,
@@ -554,13 +523,12 @@ app.post('/package', async (req, res) => {
                 };
                 return res.status(409).json(jsonResponse);
             } else {
-                console.log('Package does not exist');
                 logger.info('Package does not exist');
                 let version = packageJson.version;
-                if(version == null || version == "") {
+                if(!version) {
                     version = '1.0.0';
                 }
-                const packageId = SHA256(packageName + version).toString();
+                const packageId = SHA256(packageName + version).toString().substr(0, 12); // Adjust as per spec
                 const jsonResponse = {
                     metadata: {
                         Name: packageName,
@@ -573,10 +541,10 @@ app.post('/package', async (req, res) => {
                         JSProgram: JSProgram || '',
                     },
                 };
-                if (repoUrl.toLowerCase().includes('github')  === false) {
+                if (!repoUrl.toLowerCase().includes('github')) {
                     const badScore = await util.noRating(repoUrl);
                     const result = await db.addNewPackage(packageName, URL, Package, packageId, badScore, version, -1, "Content", readMeContent, secret, usergroup);
-                    if(result[0] == false) {
+                    if(!result[0]) {
                         logger.error(`Error uploading package:`, packageName);
                         return res.status(500).send('Error uploading package');
                     }
@@ -585,21 +553,21 @@ app.post('/package', async (req, res) => {
                     } catch (e) {
                         logger.error('Error uploading content to S3:', e);
                         const removed = await db.removePackageByNameOrHash(packageId, Package);
-                        if (removed == false) {
+                        if (!removed) {
                             logger.error('Error removing package from mongo');
-                        } else logger.error('Package removed from mongo');
+                        } else {
+                            logger.error('Package removed from mongo');
+                        }
                         return res.status(500).send('Error uploading content to S3');
                     }
                     logger.info(`Non-Github URL package uploaded`);
-
                     return res.status(201).send(jsonResponse);  
                 }
                 
                 const [package_rating, package_net] = await rate.rate(repoUrl);
-                console.log('Package Net:', package_net);
                 if (package_net >= 0.5) {
                     const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "Content", readMeContent, secret, usergroup);
-                    if(result[0] == false) {
+                    if(!result[0]) {
                         logger.error(`Error uploading package:`, packageName);
                         return res.status(500).send('Error uploading package');
                     }
@@ -608,15 +576,15 @@ app.post('/package', async (req, res) => {
                     } catch (e) {
                         logger.error('Error uploading content to S3:', e);
                         const removed = await db.removePackageByNameOrHash(packageId, Package);
-                        if (removed == false) {
+                        if (!removed) {
                             logger.error('Error removing package from mongo');
-                        } else logger.error('Package removed from mongo');
+                        } else {
+                            logger.error('Package removed from mongo');
+                        }
                         return res.status(500).send('Error uploading content to S3');
                     }
                     logger.debug(`Package ${packageName} uploaded with score: ${package_rating}`);
-
                     return res.status(201).send(jsonResponse);  
-                    
                 } else {
                     const jsonResponse = {
                         metadata: {
@@ -631,7 +599,6 @@ app.post('/package', async (req, res) => {
                 }
             }
         } catch (error) {
-            console.log(error);
             logger.error('Error processing package content:', error);
             return res.status(500).json({ error: 'Failed to process package content.' });
         }
@@ -667,10 +634,10 @@ app.post('/package', async (req, res) => {
             
             const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
             const packageJson = JSON.parse(packageJsonContent);
-            const package_name = packageJson.name;
+            const packageName = packageJson.name;
             
             const readmeContent = util.findAndReadReadme(possibleReadmeFiles, tempDir);
-            if(readmeContent == '') {
+            if(readmeContent === '') {
                 logger.error('No README file found');
                 return res.status(400).send('No README file found');
             }   
@@ -695,16 +662,16 @@ app.post('/package', async (req, res) => {
             }
 
             // Log or use the extracted information as needed
-            logger.debug('Package Name:', package_name);
+            logger.debug('Package Name:', packageName);
             fs.rmSync(tempDir, { recursive: true, force: true });
-            const pkg = await db.getPackagesByNameOrHash(package_name, Package);
-            if (pkg[0] == true) { // if the package already exists, just return the score
-                logger.debug(`Package ${package_name} already exists with score: ${pkg[1]["score"]}`);
-                const version = pkg[1]["version"];
-                const packageId = SHA256(package_name + version).toString();
+            const pkg = await db.getPackagesByNameOrHash(packageName, Package);
+            if (pkg[0] === true) { // if the package already exists, just return the score
+                logger.debug(`Package ${packageName} already exists with score: ${pkg[1].score}`);
+                const version = pkg[1].version;
+                const packageId = SHA256(packageName + version).toString().substr(0, 12); // Adjust as per spec
                 const jsonResponse = {
                     metadata: {
-                        Name: package_name,
+                        Name: packageName,
                         Version: version,
                         ID: packageId,
                         Token: newToken,
@@ -718,16 +685,14 @@ app.post('/package', async (req, res) => {
             } else {
                 logger.info('Package does not exist');
                 const [package_rating, package_net] = await rate.rate(URL);
-                logger.debug('Package Net:', package_net);
-                logger.debug('Package Rating:', package_rating);
                 let version = packageJson.version;
-                if(version == null || version == "") {
+                if(!version) {
                     version = '1.0.0';
                 }
-                const packageId = SHA256(package_name + version).toString();
+                const packageId = SHA256(packageName + version).toString().substr(0, 12); // Adjust as per spec
                 const jsonResponse = {
                     metadata: {
-                        Name: package_name,
+                        Name: packageName,
                         Version: version,
                         ID: packageId,
                         Token: newToken
@@ -739,9 +704,9 @@ app.post('/package', async (req, res) => {
                     },
                 };
                 if (package_net >= 0.5) {
-                    const result = await db.addNewPackage(package_name, URL, Package, packageId, package_rating, version, package_net, "URL", readmeContent, secret, usergroup);
-                    if (result[0] == false) {
-                        logger.error(`Error uploading package:`, package_name);
+                    const result = await db.addNewPackage(packageName, URL, Package, packageId, package_rating, version, package_net, "URL", readmeContent, secret, usergroup);
+                    if(!result[0]) {
+                        logger.error(`Error uploading package:`, packageName);
                         return res.status(500).send('Error uploading package');
                     }
                     try {
@@ -749,9 +714,11 @@ app.post('/package', async (req, res) => {
                     } catch (e) {
                         logger.error('Error uploading content to S3:', e);
                         const removed = await db.removePackageByNameOrHash(packageId, Package);
-                        if (removed == false) {
+                        if (!removed) {
                             logger.error('Error removing package from mongo');
-                        } else logger.error('Package removed from mongo');  
+                        } else {
+                            logger.error('Package removed from mongo');
+                        }
                         return res.status(500).send('Error uploading content to S3');
                     }
                     return res.status(201).send(jsonResponse);
@@ -765,25 +732,27 @@ app.post('/package', async (req, res) => {
                             packageRating: package_rating,
                         },
                     };
-                    logger.debug(`Package ${package_name} rating too low: ${package_rating}`);
+                    logger.debug(`Package ${packageName} rating too low: ${package_rating}`);
                     return res.status(424).send(jsonResponse);
                 }
             }
         } catch (error) {
             logger.error(`Error uploading package:`, error);
-            console.log(error);
             return res.status(500).send('Error uploading package');
         }
     }
     
 });
 
+/**
+ * @route POST /package/:id
+ * @desc Update a specific package.
+ */
 app.post('/package/:id', async (req, res) => { 
-    console.log('Updating package: ', req.body);
     logger.debug('Updating package:', req.body);
     try {
-        const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string
-        if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+        const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
+        if(!authToken || authToken.trim() === '') {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
@@ -794,11 +763,11 @@ app.post('/package/:id', async (req, res) => {
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
         logger.debug('Update: Token verified');
-        if(isAdmin != true) {
+        if(!isAdmin) {
             logger.error('You do not have the correct permissions to upload to the database.');
-            return res.status(403).send('You do not have the correct permissions to upload to the database.')
+            return res.status(403).send('You do not have the correct permissions to upload to the database.');
         }
-        const { metadata, data } = req.body
+        const { metadata, data } = req.body;
         if ((!data['Content'] && !data['URL']) || (data['Content'] && data['URL'])) {
             logger.info('Either content and URL were set, or neither were set.');
             return res.status(400).json({
@@ -812,25 +781,24 @@ app.post('/package/:id', async (req, res) => {
             logger.info('Name, Version, or ID was not set.');
             return res.status(400).send('Name, Version, or ID was not set.');
         }
-        if (typeof(metadata['Name']) != 'string' || typeof(metadata['Version']) != 'string' || typeof(metadata['ID']) != 'string') {
+        if (typeof(metadata['Name']) !== 'string' || typeof(metadata['Version']) !== 'string' || typeof(metadata['ID']) !== 'string') {
             logger.info('Name, Version, or ID is not a string.');
             return res.status(400).send('Metadata is of incorrect type.');
         }
         logger.debug('Update: Metadata Verified');
 
-        // Validate the data fields assuming url and content are properly sent
-        if (data['Name'] && metadata['Name'] != data['Name']) {
+        // Validate the data fields assuming URL and content are properly sent
+        if (data['Name'] && metadata['Name'] !== data['Name']) {
             logger.info('Name in metadata does not match name in data.');
             return res.status(400).send('Name in metadata does not match name in data.');
         }
         logger.debug('Update: Name verified');
 
-        if (metadata['ID'] != req.params.id) {
+        if (metadata['ID'] !== req.params.id) {
             logger.info('ID in metadata does not match ID in URL.');
             return res.status(400).send('ID in metadata does not match ID in URL.');
         }
         logger.debug('Update: ID verified');
-
 
         const packageID = metadata['ID'];
         const secret = data['secret'];
@@ -840,20 +808,16 @@ app.post('/package/:id', async (req, res) => {
         let isUrl = false;
         let content = null;
         let url = data['URL'];
-        console.log('Currently updating package:', packageName);
-        logger.debug('Currently pdating package:', packageName);
-        if (url) { // if you are given a URL, get the base64 encoded zipped content
+        logger.debug('Currently updating package:', packageName);
+        if (url) { // If given a URL, get the base64 encoded zipped content
             logger.debug('Processing package from URL');
             isUrl = true;
             try {
-                // if the url is npm, change it to github url
+                // If the URL is npm, change it to GitHub URL
                 if (url.includes('npmjs.com')) {
-                    console.log('before process url: ', url);
                     url = await util.processNPMUrl(url);
-                    console.log('after process url: ', url);
-                    if (url == null) { // if the github url could not be extracted
+                    if (!url) { // If the GitHub URL could not be extracted
                         logger.info('Invalid URL');
-                        console.log('Invalid URL');
                         return res.status(400).send('Invalid URL');
                     }
                 }
@@ -861,31 +825,43 @@ app.post('/package/:id', async (req, res) => {
                 // Process the URL
                 logger.info('Update: processing URL:', url);
                 content = await util.processGithubURL(url, version);
-                if (content == null) { // if the content could not be extracted, returns null
+                if (content === null) { // If the content could not be extracted
                     logger.info('Error processing package content from URL');
-                    return res.status(500).send('Error processing package content from URL');
-                } else if (content == '-1') {
+                    return res.status(400).send('Error processing package content from URL');
+                } else if (content === '-1') {
                     logger.info('No such version exists (URL update)');
                     return res.status(404).send('No such version exists');
                 }
             } catch(error) {
                 logger.error('Error processing package content from URL:', error);
-                return res.status(500).send('Error processing package content');
+                return res.status(400).send('Error processing package content');
             }
         } else {
             content = data['Content'];
         }
         logger.info('Update: Package content processed');
-        // now that you know you have the zipped file, decoode the content
-        const buffer = Buffer.from(content, 'base64');
-        logger.info('Update: Buffer created');
 
-        // load the zip file
-        const zip = new AdmZip(buffer);
+        // Decode Base64 content
+        let buffer;
+        try {
+            buffer = Buffer.from(content, 'base64');
+        } catch (error) {
+            logger.error('Invalid Base64 content.');
+            return res.status(400).send('Invalid Base64 content.');
+        }
+
+        // Load and validate ZIP file
+        let zip;
+        try {
+            zip = new AdmZip(buffer);
+        } catch (error) {
+            logger.error('Invalid ZIP content.');
+            return res.status(400).send('Invalid ZIP content.');
+        }
+
         let packageJsonEntry = null;
         let readMeContent = '';
 
-        // find the package.json file
         zip.getEntries().forEach(function(zipEntry) {
             if (zipEntry.entryName.endsWith('package.json')) {
                 packageJsonEntry = zipEntry;
@@ -898,21 +874,30 @@ app.post('/package/:id', async (req, res) => {
             }
         });
         
-        if (!readMeContent) logger.info('No README file found');
-        else logger.debug('README file found');
+        if (!readMeContent) {
+            logger.info('No README file found');
+        } else {
+            logger.debug('README file found');
+        }
 
         if (!packageJsonEntry) {
             logger.info('package.json not found in the provided content.');
-            return res.status(500).send('package.json not found in the provided content.');
+            return res.status(400).send('package.json not found in the provided content.');
         }
         logger.debug('update: package.json found in the provided content');
 
-        // read and parse package.json
-        const packageJsonContent = packageJsonEntry.getData().toString('utf8');
-        const packageJson = JSON.parse(packageJsonContent);
+        // Read and parse package.json
+        let packageJson;
+        try {
+            const packageJsonContent = packageJsonEntry.getData().toString('utf8');
+            packageJson = JSON.parse(packageJsonContent);
+        } catch (error) {
+            logger.error('Invalid package.json content.');
+            return res.status(400).send('Invalid package.json content.');
+        }
 
         if (!url) {
-            const repository = packageJson.repository;
+            let repository = packageJson.repository;
             if (typeof repository === 'string') {
                 url = repository;
             } else if (repository && repository.url) {
@@ -922,12 +907,11 @@ app.post('/package/:id', async (req, res) => {
         }
         logger.debug('Package Name:', packageName);
         logger.debug('Repository URL:', url);
-        console.log('Package Name:', packageName);
-        console.log('Repository URL:', url);
 
+        // Generate Package Rating
         let package_rating;
         let package_net;
-        if (url.toLowerCase().includes('github') === false) {
+        if (!url.toLowerCase().includes('github')) {
             package_rating = util.noRating(url);
             package_net = -1;
         } else {
@@ -935,60 +919,70 @@ app.post('/package/:id', async (req, res) => {
         }
         logger.debug('Update: Package Net:', package_net);
         logger.debug('Update: Package Rating:', package_rating);
-        if (package_net < 0.5 && url.toLowerCase().includes('github') === false) {
+        if (package_net < 0.5 && !url.toLowerCase().includes('github')) {
             logger.debug(`Package ${packageName} rating too low: ${package_rating}`);
-            return res.status(424).send('Package rating too low');
+            return res.status(400).send('Package rating too low');
         }
-        // package is now ingestible 
+
+        // Check existing packages
         const pkgs = await db.getPackagesByNameOrHash(packageName, Package);
-        if (pkgs[0] == false) {
-            if (pkgs[1][0] == -1) {
+        if (!pkgs[0]) {
+            if (pkgs[1][0] === -1) {
                 logger.info('Package not found');
-                return res.status(404).send('Package not found'); // possible that there was an error fetching here
+                return res.status(404).send('Package not found');
             } else {
                 logger.info('Internal Error: Could not fetch packages');
-                return res.status(500).send('Internal Error: Could not fetch packages');
+                return res.status(400).send('Internal Error: Could not fetch packages');
             }
-        } else if (Array.isArray(pkgs[1])) { // gets mad if you dont do this
+        } else if (Array.isArray(pkgs[1])) { // Ensures pkg_list is an array
             logger.debug('Update: old version found');
             const pkg_list = pkgs[1];
-            // ensure that content only updated by content, url only updated by url
-            if ((isUrl && pkg_list[0].ingestionMethod == "Content") || (!isUrl && pkg_list[0].ingestionMethod == "URL")) {
+            // Ensure that content only updated by content, URL only updated by URL
+            if ((isUrl && pkg_list[0].ingestionMethod === "Content") || (!isUrl && pkg_list[0].ingestionMethod === "URL")) {
                 logger.info('Ingestion method does not match');
                 return res.status(400).send('Ingestion method does not match');
             }
             logger.debug('Update: ingestion method verified');
-            if (pkg_list[0]["secret"]) {
-                // if not in user group that initially uploaded, you can't update
-                if (pkg_list[0]["userGroup"] != userGroup) {
+
+            // Verify user group and secret
+            if (pkg_list[0].secret) {
+                // If not in user group that initially uploaded, you can't update
+                if (pkg_list[0].userGroup !== userGroup) {
                     logger.error("No access: Wrong user group");
                     return res.status(403).send("No access: Wrong user group");
-                } else if (secret == false) {
+                } else if (secret === false) {
                     logger.error("Cannot make secret package public");
                     return res.status(403).send("Cannot make secret package public");
                 }
             } else {
-                if (secret == true) {
+                if (secret === true) {
                     logger.error("Cannot make public package secret");
                     return res.status(403).send("Cannot make public package secret");
                 }
             }
             logger.debug('Update: user group and secret verified');
+
+            // Split version into major, minor, patch
             const [majorKey, minorKey, patchKey] = version.split('.');
-            logger.debug('Update: version split'); // create list of all packages that have major and minor versions
-            const matches = pkg_list.filter(pkg=> {
+            logger.debug('Update: version split');
+
+            // Find all packages with the same major and minor version
+            const matches = pkg_list.filter(pkg => {
                 const [major, minor] = pkg.version.split('.');
-                return majorKey == major && minorKey == minor;
-            }).map(pkg => pkg.version); // will only store the version string rather than whole package
+                return majorKey === major && minorKey === minor;
+            }).map(pkg => pkg.version); // Store version strings
+
             logger.debug('Update: found matches:', matches);
 
+            // Sort matches in descending order
             matches.sort((a, b) => {
                 const patchA = parseInt(a.split('.')[2]);
                 const patchB = parseInt(b.split('.')[2]);
-                return patchB - patchA; // sort in descending order
+                return patchB - patchA; // Sort descending
             });
             logger.debug('Update: matches sorted');
 
+            // Process package content
             const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
             let base64zip = '';
             try {
@@ -999,123 +993,133 @@ app.post('/package/:id', async (req, res) => {
                     const updatedZipBuffer = await util.createZipFromDir(tempDir);
                     base64zip = updatedZipBuffer.toString('base64');
                 } else {
-                    // zip up the original content
+                    // Zip up the original content
                     const zipBuffer = zip.toBuffer();
                     base64zip = zipBuffer.toString('base64');
                 }
             } catch (error) {
                 logger.error('Error processing package content:', error);
-                return res.status(500).send('Error processing package content');
+                return res.status(400).send('Error processing package content');
             } finally {
                 fs.rmSync(tempDir, { recursive: true, force: true});
             }
             logger.debug('Update: package content processed');
-            const newPackageID = SHA256(packageName + version).toString();
+
+            // Generate new Package ID
+            const newPackageID = SHA256(packageName + version).toString().substr(0, 12); // Adjust as per spec
             logger.debug('Update: new package ID:', newPackageID);
-            if (matches.length == 0) {
+
+            if (matches.length === 0) {
+                // Add new package to database
                 const result = await db.addNewPackage( 
                     packageName, url, Package, newPackageID, package_rating, version, package_net, 
                     isUrl ? "URL" : "Content", readMeContent, secret, userGroup);
                 
-                if (result[0] == false) {
-                    return res.status(500).send('Error adding package to mongo');
+                if (!result[0]) {
+                    return res.status(400).send('Error adding package to mongo');
                 }
 
+                // Upload content to S3
                 try {
-                    // use try-catch because this has no return value
                     await s3.uploadContentToS3(base64zip, newPackageID);
                 } catch (error) {
                     logger.debug('Error uploading content to S3:', error);
                     const removed = await db.removePackageByNameOrHash(newPackageID, Package);
-                    if (removed == false) {
+                    if (!removed) {
                         logger.debug('Error removing package from mongo');
-                    } else logger.debug('Package removed from mongo');
+                    } else {
+                        logger.debug('Package removed from mongo');
+                    }
                     logger.debug('Package not uploaded to S3');
-                    return res.status(500).send('Error uploading content to S3');
+                    return res.status(400).send('Error uploading content to S3');
                 }
 
-                if (result[0] == true) {
-                    logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
-                    return res.status(200).send('Package has been updated');
-                }  else {
-                    logger.info('Error updating package');
-                    return res.status(500).send('Error updating package');
-                }
-
+                logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
+                return res.status(200).send('Package has been updated');
             } else if (isUrl) {
-                if (matches.includes(version)) { // the version already exists
-                    logger.info('Package with version ${version} already exists');
-                    return res.status(409).send('Package with version ${version} already exists');
+                if (matches.includes(version)) { // The version already exists
+                    logger.info(`Package with version ${version} already exists`);
+                    return res.status(400).send('Package with version ${version} already exists'); // Mapped to 400 as per spec
                 } else {
+                    // Add new package to database
                     const result = await db.addNewPackage(
                         packageName, url, Package, newPackageID, package_rating, version, package_net, 
                         "URL", readMeContent, secret, userGroup);
 
-                    if (result[0] == false) {
+                    if (!result[0]) {
                         logger.debug('Error adding package to mongo');
-                        return res.status(500).send('Error adding package to mongo');
+                        return res.status(400).send('Error adding package to mongo');
                     }
 
+                    // Upload content to S3
                     try {
-                        // use try-catch because this has no return value
                         await s3.uploadContentToS3(base64zip, newPackageID);
                     } catch (error) {
                         logger.debug('Error uploading content to S3:', error);
                         const removed = await db.removePackageByNameOrHash(newPackageID, Package);
-                        if (removed == false) {
+                        if (!removed) {
                             logger.debug('Error removing package from mongo');
-                        } else logger.debug('Package removed from mongo');
+                        } else {
+                            logger.debug('Package removed from mongo');
+                        }
                         logger.debug('Package not uploaded to S3');
-                        return res.status(500).send('Error uploading content to S3');
+                        return res.status(400).send('Error uploading content to S3');
                     }
-                    if (result[0] == true) {
+                    if (result[0]) {
                         logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                         return res.status(200).send('Package has been updated');
                     }
                 }
             } else {
-                // uploaded via content
+                // Uploaded via content
                 const latestUploadedPatch = parseInt(matches[0].split('.')[2]);
                 if (parseInt(patchKey) > latestUploadedPatch) {
+                    // Add new package to database
                     const result = await db.addNewPackage(
                         packageName, url, Package, newPackageID, package_rating, version, package_net, 
                         "Content", readMeContent, secret, userGroup);
 
-                    if (result[0] == false) {
+                    if (!result[0]) {
                         logger.debug('Error adding package to mongo');
-                        return res.status(500).send('Error adding package to mongo');
+                        return res.status(400).send('Error adding package to mongo');
                     }
 
+                    // Upload content to S3
                     try {
-                        // use try-catch because this has no return value
                         await s3.uploadContentToS3(base64zip, newPackageID);
                     } catch (error) {
                         logger.debug('Error uploading content to S3:', error);
                         const removed = await db.removePackageByNameOrHash(newPackageID, Package);
-                        if (removed == false) {
+                        if (!removed) {
                             logger.debug('Error removing package from mongo');
-                        } else logger.debug('Package removed from mongo');
+                        } else {
+                            logger.debug('Package removed from mongo');
+                        }
                         logger.debug('Package not uploaded to S3');
-                        return res.status(500).send('Error uploading content to S3');
+                        return res.status(400).send('Error uploading content to S3');
                     }
 
                     logger.info(`Package ${packageName} updated with score ${package_rating}, version ${version}, and id ${newPackageID}`);
                     return res.status(200).send('Package has been updated');
-                } else if (parseInt(patchKey) == latestUploadedPatch) {
+                } else if (parseInt(patchKey) === latestUploadedPatch) {
                     logger.info('Version already exists');
-                    return res.status(409).send('Version already exists');
+                    return res.status(400).send('Version already exists'); // Mapped to 400 as per spec
                 } else {
                     logger.info('Patch version is not the latest');
                     return res.status(400).send('Patch version is not the latest');
                 }
             }
         }
-    }  catch (error) {
+    } catch (error) {
         logger.error(error);
-        return res.status(500).json({ error: 'Bad Request' });
+        return res.status(400).json({ error: 'Bad Request' });
     }
 });
 
+/**
+ * @route PUT /authenticate
+ * @desc Authenticate a user and provide an access token.
+ */
 app.put('/authenticate', async (req, res) => {
     try {
         const { User, Secret } = req.body;
@@ -1130,11 +1134,11 @@ app.put('/authenticate', async (req, res) => {
           return res.status(400).send('Malformed AuthenticationRequest');
         }
     
-        const { name, isAdmin} = User;
+        const { name, isAdmin } = User;
         const { password } = Secret;
     
         // Hash the provided password using SHA-256
-        const hashedPassword = SHA256(password).toString()
+        const hashedPassword = SHA256(password).toString();
         
         // Query the database for the user
         const [found, user] = await db.getUserByName(name, UserModel);
@@ -1144,55 +1148,21 @@ app.put('/authenticate', async (req, res) => {
         if(user.userHash !== hashedPassword) {
           return res.status(401).send('Invalid password');
         }
-        console.log(`User: ${User}`);
-        console.log(`Secret: ${Secret}`);
-        console.log(`Userhash: ${user.userHash}`);
-        console.log(`Hashed Password: ${hashedPassword}`);
-        console.log(`user: ${user}`);
 
-        const authToken = util.generateToken(user.isAdmin, user["userGroup"]);
-        console.log(`authToken: ${authToken}`);
+        // Generate authentication token
+        const authToken = util.generateToken(user.isAdmin, user.userGroup);
         const bearerToken = `bearer ${authToken}`;
-        console.log(`bearer token: ${bearerToken}`);
         return res.status(200).send(bearerToken);
       } catch (error) {
-        console.error(`Hasbulla: ${error}`);
-        console.log(`Hasbulla: ${error}`);
-        return res.status(500).send('Bad Request');
+        logger.error(`Authentication Error: ${error}`);
+        return res.status(400).send('Bad Request');
       }
 });
 
-
-app.get('/package//cost', async (req, res) => {
-    // Extract Authentication Token
-    const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
-    const dependencyParam = req.query.dependency;
-    const dependency = dependencyParam === 'true'; // Defaults to false
-
-    let token;
-    let isadmin;
-    let usergroup;
-    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
-        logger.error('Missing Authentication Header');
-        return res.status(403).send('Missing Authentication Header');
-    }
-    try {
-        const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
-        if(updatedToken instanceof Error) {
-            logger.error('Invalid or expired token');
-            return res.status(403).send(`Invalid or expired token.`);
-        }
-        token = updatedToken;
-        isadmin = isAdmin;
-        usergroup = userGroup;
-
-    } catch (error) {
-        logger.error('Invalid or expired token');
-        return res.status(403).send(`Invalid or expired token.`);
-    }
-    return res.status(400).send('Missing or invalid Package ID');
-});
-
+/**
+ * @route GET /package/:id/cost
+ * @desc Get the cost of a specific package.
+ */
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
     const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
@@ -1203,7 +1173,7 @@ app.get('/package/:id/cost', async (req, res) => {
     let isadmin;
     let usergroup;
     // Authentication Check
-    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+    if(!authToken || authToken.trim() === '') {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
@@ -1230,7 +1200,7 @@ app.get('/package/:id/cost', async (req, res) => {
     }
 
     const [success, packageInfo] = await db.getPackagesByNameOrHash(packageId, Package);
-    if(!success && packageInfo[0] == -1) {
+    if(!success && packageInfo[0] === -1) {
         logger.error('Package does not exist');
         return res.status(404).send('Package does not exist');
     }
@@ -1239,7 +1209,7 @@ app.get('/package/:id/cost', async (req, res) => {
         return res.status(500).send('Server error while retrieving package info.');
     }
 
-    if(packageInfo[0]["secret"] && packageInfo[0]["userGroup"] != usergroup) {
+    if(packageInfo[0].secret && packageInfo[0].userGroup !== usergroup) {
         logger.error("No access: Wrong user group");
         return res.status(403).send("No access: Wrong user group");   
     }
@@ -1259,12 +1229,12 @@ app.get('/package/:id/cost', async (req, res) => {
         }
 
         const packageJsonContent = packageJsonEntry.getData().toString('utf8');
-        const packageJson: util.PackageJson = JSON.parse(packageJsonContent);
+        const packageJson = JSON.parse(packageJsonContent);
 
         const dependencies = packageJson.dependencies ? Object.keys(packageJson.dependencies) : [];
 
         const standaloneCost = await util.calculatePackageSize(packageId);
-        const packageCost: { [key: string]: { standaloneCost?: number; totalCost: number } } = {
+        const packageCost = {
             [packageId]: {
                 totalCost: standaloneCost,
             },
@@ -1286,7 +1256,7 @@ app.get('/package/:id/cost', async (req, res) => {
                     }
 
                     const depPackageJsonContent = depPackageJsonEntry.getData().toString('utf8');
-                    const depPackageJson: util.PackageJson = JSON.parse(depPackageJsonContent);
+                    const depPackageJson = JSON.parse(depPackageJsonContent);
                     const depStandaloneCost = await util.calculatePackageSize(depId);
                     packageCost[depId] = {
                         standaloneCost: depStandaloneCost,
@@ -1299,7 +1269,7 @@ app.get('/package/:id/cost', async (req, res) => {
             }
         }
         return res.status(200).json(packageCost);
-    } catch (error: any) {
+    } catch (error) {
         if (error.name === 'NoSuchKey' || error.message.includes('NotFound')) { // AWS S3 specific error for missing objects
             logger.error(`Package not found in S3: ${packageId}`);
             return res.status(404).send('Package not found in S3.');
@@ -1309,14 +1279,16 @@ app.get('/package/:id/cost', async (req, res) => {
     }
 });
 
+/**
+ * @route POST /packages
+ * @desc Search for packages.
+ */
 app.post('/packages', async (req, res) => {
     const offset = req.query.offset as string | undefined;
     const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
 
     // Validate request body
     if (!Array.isArray(packageQueries) || packageQueries.length === 0) {
-        console.log(packageQueries);
-        console.log(packageQueries.length);
         logger.error('Invalid request body: Expected a non-empty array of PackageQuery.');
         return res.status(400).send("There are missing field(s) in the PackageQuery or it is formed improperly, or is invalid.");
     }
@@ -1409,7 +1381,6 @@ app.post('/packages', async (req, res) => {
             if (paginatedPackages.length > limit) {
                 return res.status(413).send('Too many packages returned.');
             }
-            console.log(paginatedPackages);
             const formattedPackages = paginatedPackages.map(pkg => ({
                 Name: pkg.name,
                 Version: pkg.version,
@@ -1424,13 +1395,19 @@ app.post('/packages', async (req, res) => {
     }
 });
 
+/**
+ * @route GET /tracks
+ * @desc Get the list of tracks a student has planned to implement in their code.
+ */
 app.get('/tracks', async (req, res) => {
     const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
     return res.status(200).json({ plannedTracks });
 });
 
-/*------------------ Extra APIs not in spec ------------------*/
-
+/**
+ * @route POST /create-account
+ * @desc Create a new user account.
+ */
 app.post('/create-account', async (req, res) => {
     const { username, password, isAdmin, userGroup } = req.body;
 
@@ -1444,19 +1421,21 @@ app.post('/create-account', async (req, res) => {
 
     try {
         const [success, result] = await db.addUser(username, hashedPassword, isAdmin, userGroup, UserModel);
-        console.log(success);
         if (success) {
             return res.status(200).json({ message: 'User created successfully', user: result });
         } else {
-            console.log(result);
-            return res.status(500).json({ error: 'Failed to create user', details: result });
+            return res.status(400).json({ error: 'Failed to create user', details: result });
         }
     } catch (error) {
-        console.error('Error in /create-account:', error);
+        logger.error('Error in /create-account:', error);
         return res.status(500).json({ error: 'Server error' });
     }
 });
 
+/**
+ * @route DELETE /delete-account
+ * @desc Delete a user account.
+ */
 app.delete('/delete-account', async (req, res) => {
     const { username, usernameToDelete, isAdmin } = req.body;
     
@@ -1472,10 +1451,12 @@ app.delete('/delete-account', async (req, res) => {
         if (success) {
             return res.status(200).json({ message: 'User deleted successfully', user: result });
         } else {
-            return res.status(500).json({ error: 'Failed to delete user', details: result });
+            return res.status(400).json({ error: 'Failed to delete user', details: result });
         }
     } catch (error) {
-        console.error('Error in /delete-account:', error);
+        logger.error('Error in /delete-account:', error);
         return res.status(500).json({ error: 'Server error' });
     }
 });
+
+export default app;
