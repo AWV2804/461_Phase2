@@ -1656,6 +1656,18 @@ app.get('/package/:id/cost', async (req, res) => {
  *   post:
  *     summary: Search for packages
  *     description: Searches for packages based on the provided queries.
+ *     parameters:
+ *       - in: header
+ *         name: x-authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The authentication token.
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: string
+ *         description: The offset for pagination.
  *     requestBody:
  *       required: true
  *       content:
@@ -1674,8 +1686,28 @@ app.get('/package/:id/cost', async (req, res) => {
  *     responses:
  *       200:
  *         description: Packages found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Name:
+ *                     type: string
+ *                     description: The name of the package.
+ *                   Version:
+ *                     type: string
+ *                     description: The version of the package.
+ *                   ID:
+ *                     type: string
+ *                     description: The package ID.
  *       400:
  *         description: Invalid request body.
+ *       403:
+ *         description: Missing or invalid authentication token.
+ *       413:
+ *         description: Too many packages returned.
  *       500:
  *         description: Internal Server Error.
  */
@@ -1690,7 +1722,7 @@ app.post('/packages', async (req, res) => {
         logger.error('Missing Authentication Header');
         return res.status(403).send('Missing Authentication Header');
     }
-    
+
     const offset = req.query.offset as string | undefined;
     const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
 
