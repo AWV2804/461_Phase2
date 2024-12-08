@@ -7,8 +7,20 @@ import TextStatistics from 'text-statistics';
 import { gitAPIHandler } from './gitAPIHandler.js'; // For GitHub repos
 import { npmHandler } from './npmHandler.js'; // For npm packages
 import logger from './logging.js';
+import { ConsoleLogEntry } from 'selenium-webdriver/bidi/logEntries.js';
 
 const execPromise = promisify(exec);
+const possibleReadmeFiles = [
+    'README.md',
+    'README',
+    'README.txt',
+    'README.rst',
+    'README.markdown',
+    'readme.markdown',
+    'README.html',
+    'readme.md',
+    'Readme.md'
+];
 
 // Utility function to delete the directory if it exists
 /**
@@ -213,9 +225,17 @@ function calculateReadability(textContent: string): { ease: number } {
  * @throws Will log an error message if the README.md file is not found or if an error occurs during the process.
  */
 async function checkDocumentationQuality(repoPath: string): Promise<number> {
+    console.log('Checking documentation quality...');
     try {
-        const readmePath = path.join(repoPath.toString(), 'README.md');
-        //console.log('README Path:', readmePath);
+        let readmePath = '';
+        for (const file of possibleReadmeFiles) {
+            const currentReadmePath = path.join(repoPath.toString(), file);
+            if (fs.existsSync(currentReadmePath)) {
+                readmePath = currentReadmePath;  // Assign the path when the file exists
+                break;  // Exit the loop once a valid README is found
+            }
+        }
+        
         if (!fs.existsSync(readmePath)) {
             logger.error('README.md not found.');
             return 0;
@@ -229,13 +249,13 @@ async function checkDocumentationQuality(repoPath: string): Promise<number> {
         logger.debug(`Readability Scores - Ease: ${readabilityScores.ease}`);
         //console.log(`Readability Scores - Ease: ${readabilityScores.ease}, Grade Level: ${readabilityScores.gradeLevel}`);
         //console.log('README.md content:', plainTextContent.substring(0, 200));
-
+        console.log('Readability Scores:', readabilityScores);
         const totalScore = readabilityScores.ease / 100;
         //console.log(`Documentation quality checked successfully with readability assessment.`);
         return totalScore < 0 ? totalScore*-1 : totalScore;
 
     } catch (error) {
-        console.error('Error checking documentation quality:', error);
+        console.log('Error checking documentation quality:', error);
         return 0;
     }
 }
@@ -287,7 +307,7 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
         //console.log(`Validating URL: ${urlString}`);
 
         let rampUpScore = 0;
-
+        console.log('Processing URL:', urlString);
         // Handle GitHub URLs
         if (isGithubUrl(urlString)) {
             //console.log('Processing GitHub repository...');
@@ -296,9 +316,10 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
             //console.log("Repository cloned successfully.");
 
             // Check documentation quality
+            console.log('Checking documentation quality...');
             rampUpScore = await checkDocumentationQuality(repoPath);
             logger.debug(`Ramp-Up Score (GitHub): ${rampUpScore}`);
-            //console.log(`Ramp-Up Score (GitHub): ${rampUpScore}`);
+            console.log(`Ramp-Up Score (GitHub): ${rampUpScore}`);
 
         // Handle npm URLs
         } else if (isNpmUrl(urlString)) {
@@ -333,7 +354,7 @@ export async function calculateRampUpScore(url: string | URL, repoPath): Promise
 
         // Clean up after analysis
         //await deleteDirectory(repoPath);
-        //console.log(`Repository directory cleaned up: ${repoPath}`);
+        console.log(`Repository directory cleaned up: ${repoPath}`);
         logger.debug(`Ramp-Up Score: ${rampUpScore}`);
         return rampUpScore;
     } catch (error) {
