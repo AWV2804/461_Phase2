@@ -64,6 +64,7 @@ import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { ConnectionClosedEvent } from 'mongodb';
 import { json } from 'stream/consumers';
+import { log } from 'console';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -786,11 +787,13 @@ app.post('/package/:id', async (req, res) => {
             logger.info('Authentication failed due to invalid or missing AuthenticationToken');
             return res.status(403).send('Authentication failed due to invalid or missing AuthenticationToken');
         } 
+        logger.debug('Update package token verified');
         const { updatedToken, isAdmin, userGroup } = util.verifyToken(authToken);
         if (updatedToken instanceof Error) {
             logger.info('Invalid or expired token');
             return res.status(403).send(`Invalid or expired token: ${updatedToken}`);
         }
+        logger.debug('Update: Token verified');
         if(isAdmin != true) {
             logger.error('You do not have the correct permissions to upload to the database.');
             return res.status(403).send('You do not have the correct permissions to upload to the database.')
@@ -802,11 +805,13 @@ app.post('/package/:id', async (req, res) => {
                 error: "Either 'Content' or 'URL' must be set, but not both.",
             });
         }
+        logger.debug('Update: Body Verified Pt. 1');
 
-        if((data['Content'] && !data['Name']) || (!data['Content'] && data['Name'])) {
+        if(!data['URL'] && (data['Content'] && !data['Name']) || (!data['Content'] && data['Name'])) {
             logger.info('Name or Content was not set.');
             return res.status(400).send('Name or Content was not set.');
         }
+        logger.debug('Update: Body Verified Pt. 2');    
         
 
         // Validate the metadata fields
@@ -818,17 +823,22 @@ app.post('/package/:id', async (req, res) => {
             logger.info('Name, Version, or ID is not a string.');
             return res.status(400).send('Metadata is of incorrect type.');
         }
+        logger.debug('Update: Metadata Verified');
 
         // Validate the data fields assuming url and content are properly sent
         if (data['Name'] && metadata['Name'] != data['Name']) {
             logger.info('Name in metadata does not match name in data.');
             return res.status(400).send('Name in metadata does not match name in data.');
         }
+        logger.debug('Update: Name verified');
 
         if (metadata['ID'] != req.params.id) {
             logger.info('ID in metadata does not match ID in URL.');
             return res.status(400).send('ID in metadata does not match ID in URL.');
         }
+        logger.debug('Update: ID verified');
+
+
         const packageID = metadata['ID'];
         const secret = data['secret'];
         const packageName = metadata['Name'];
@@ -837,8 +847,10 @@ app.post('/package/:id', async (req, res) => {
         let isUrl = false;
         let content = null;
         let url = data['URL'];
-        console.log('Updating package:', packageName);
+        console.log('Currently updating package:', packageName);
+        logger.debug('Currently pdating package:', packageName);
         if (url) { // if you are given a URL, get the base64 encoded zipped content
+            logger.debug('Processing package from URL');
             isUrl = true;
             try {
                 // if the url is npm, change it to github url
@@ -854,7 +866,7 @@ app.post('/package/:id', async (req, res) => {
                 }
 
                 // Process the URL
-                logger.info('Processing URL:', url);
+                logger.info('Update: processing URL:', url);
                 content = await util.processGithubURL(url, version);
                 if (content == null) { // if the content could not be extracted, returns null
                     logger.info('Error processing package content from URL');
@@ -870,8 +882,10 @@ app.post('/package/:id', async (req, res) => {
         } else {
             content = data['Content'];
         }
+        logger.info('Update: Package content processed');
         // now that you know you have the zipped file, decoode the content
         const buffer = Buffer.from(content, 'base64');
+        logger.info('Update: Buffer created');
 
         // load the zip file
         const zip = new AdmZip(buffer);
@@ -890,12 +904,15 @@ app.post('/package/:id', async (req, res) => {
                 }
             }
         });
+        
         if (!readMeContent) logger.info('No README file found');
+        else logger.debug('README file found');
 
         if (!packageJsonEntry) {
             logger.info('package.json not found in the provided content.');
             return res.status(500).send('package.json not found in the provided content.');
         }
+        logger.debug('update: package.json found in the provided content');
 
         // read and parse package.json
         const packageJsonContent = packageJsonEntry.getData().toString('utf8');
@@ -910,8 +927,8 @@ app.post('/package/:id', async (req, res) => {
             }
             url = util.parseRepositoryUrl(url).toString();
         }
-        logger.info('Package Name:', packageName);
-        logger.info('Repository URL:', url);
+        logger.debug('Package Name:', packageName);
+        logger.debug('Repository URL:', url);
         console.log('Package Name:', packageName);
         console.log('Repository URL:', url);
 
@@ -923,9 +940,10 @@ app.post('/package/:id', async (req, res) => {
         } else {
             [package_rating, package_net] = await rate.rate(url);
         }
-
+        logger.debug('Update: Package Net:', package_net);
+        logger.debug('Update: Package Rating:', package_rating);
         if (package_net < 0.5 && url.toLowerCase().includes('github') === false) {
-            logger.info(`Package ${packageName} rating too low: ${package_rating}`);
+            logger.debug(`Package ${packageName} rating too low: ${package_rating}`);
             return res.status(424).send('Package rating too low');
         }
         // package is now ingestible 
@@ -939,13 +957,14 @@ app.post('/package/:id', async (req, res) => {
                 return res.status(500).send('Internal Error: Could not fetch packages');
             }
         } else if (Array.isArray(pkgs[1])) { // gets mad if you dont do this
+            logger.debug('Update: old version found');
             const pkg_list = pkgs[1];
             // ensure that content only updated by content, url only updated by url
             if ((isUrl && pkg_list[0].ingestionMethod == "Content") || (!isUrl && pkg_list[0].ingestionMethod == "URL")) {
                 logger.info('Ingestion method does not match');
                 return res.status(400).send('Ingestion method does not match');
             }
-
+            logger.debug('Update: ingestion method verified');
             if (pkg_list[0]["secret"]) {
                 // if not in user group that initially uploaded, you can't update
                 if (pkg_list[0]["userGroup"] != userGroup) {
@@ -961,22 +980,21 @@ app.post('/package/:id', async (req, res) => {
                     return res.status(403).send("Cannot make public package secret");
                 }
             }
-
-            // extract the major, minor, and patch version from input package
+            logger.debug('Update: user group and secret verified');
             const [majorKey, minorKey, patchKey] = version.split('.');
-            logger.info("Extracting major, minor, and patch version from input package");
-            // create list of all packages that have major and minor versions
+            logger.debug('Update: version split'); // create list of all packages that have major and minor versions
             const matches = pkg_list.filter(pkg=> {
                 const [major, minor] = pkg.version.split('.');
                 return majorKey == major && minorKey == minor;
             }).map(pkg => pkg.version); // will only store the version string rather than whole package
-            logger.info("Number of matches found: ", matches.length);
+            logger.debug('Update: found matches:', matches);
 
             matches.sort((a, b) => {
                 const patchA = parseInt(a.split('.')[2]);
                 const patchB = parseInt(b.split('.')[2]);
                 return patchB - patchA; // sort in descending order
             });
+            logger.debug('Update: matches sorted');
 
             const tempDir = path.join(__dirname, 'tmp', packageName + '-' + Date.now());
             let base64zip = '';
@@ -998,9 +1016,11 @@ app.post('/package/:id', async (req, res) => {
             } finally {
                 fs.rmSync(tempDir, { recursive: true, force: true});
             }
+            logger.debug('Update: package content processed');
             const newPackageID = SHA256(packageName + version).toString();
+            logger.debug('Update: new package ID:', newPackageID);
             if (matches.length == 0) {
-                const result = await db.addNewPackage( // talk to adhvik. should be using update package or add new package?
+                const result = await db.addNewPackage( 
                     packageName, url, Package, newPackageID, package_rating, version, package_net, 
                     isUrl ? "URL" : "Content", readMeContent, secret, userGroup);
                 
