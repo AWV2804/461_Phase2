@@ -110,7 +110,7 @@ elif [ "$command" = "build" ]; then
 elif [ "$command" = "test" ]; then
     echo "Running tests..."
     npx tsc
-    npx vitest run --coverage.enabled=true 
+    npx vitest run --coverage.enabled=true --silent
     exit $?
 else
     echo "HI"
