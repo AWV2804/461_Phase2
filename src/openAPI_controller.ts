@@ -246,6 +246,8 @@ app.delete('/reset', async (req, res) => {
  *         description: Malformed request.
  *       403:
  *         description: Missing or invalid authentication token, or insufficient permissions.
+ *       404:
+ *          description: No packages found. 
  *       500:
  *         description: Error retrieving packages.
  */
