@@ -1684,6 +1684,13 @@ app.post('/packages', async (req, res) => {
     logger.debug("HI I AM HERE");
     console.log("HASBULA", req.body);
     logger.debug("KIDS", req.body);
+
+    const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
+    if(!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+        logger.error('Missing Authentication Header');
+        return res.status(403).send('Missing Authentication Header');
+    }
+    
     const offset = req.query.offset as string | undefined;
     const packageQueries: Array<{ Name: string; Version?: string }> = req.body;
 
