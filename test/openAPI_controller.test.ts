@@ -105,7 +105,7 @@ describe('DELETE /reset', () => {
     const response = await request(app)
       .delete('/reset')
       .set('X-Authorization', 'non-admin-token');
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(response.text).toBe('You do not have the correct permissions to reset the registry.');
   });
 
@@ -911,8 +911,8 @@ describe('POST /packages', () => {
     const response = await request(app)
       .post('/packages')
       .send([{ Name: '*' }])
-      .query({ offset: '0' });
-
+      .query({ offset: '0' })
+      .set('X-Authorization', 'valid-token');
     expect(response.status).toBe(200);
     expect(response.body).toHaveLength(50); // Only 50 packages should be returned
     expect(response.headers['offset']).toBe('50'); // Pagination offset should be set
@@ -926,37 +926,47 @@ describe('POST /packages', () => {
 
     // Mocking db.getPackagesByNameOrHash to return mock packages
     vi.mocked(db.getPackagesByNameOrHash).mockResolvedValue([true, mockPackages]);
+    vi.mocked(util.verifyToken).mockReturnValueOnce({ updatedToken: 'new-valid', isAdmin: true, userGroup: 'admin' });
 
     const response = await request(app)
       .post('/packages')
       .send(validPackageQueries)
-      .query({ offset: '0' });
+      .query({ offset: '0' })
+      .set('X-Authorization', 'valid-token');
 
     expect(response.status).toBe(200);
     expect(response.body).toHaveLength(2); // Should return the two mock packages
   });
 
   it('should return 400 with invalid request data (empty array)', async () => {
+    vi.mocked(util.verifyToken).mockReturnValueOnce({ updatedToken: 'new-valid', isAdmin: true, userGroup: 'admin' });
+
     const response = await request(app)
       .post('/packages')
-      .send([]); // Empty array
+      .send([])
+      .set('X-Authorization', 'valid-token'); // Empty array
 
     expect(response.status).toBe(400);
     expect(response.text).toBe('There are missing field(s) in the PackageQuery or it is formed improperly, or is invalid.');
   });
 
   it('should return 400 with invalid request data (invalid version)', async () => {
+    vi.mocked(util.verifyToken).mockReturnValueOnce({ updatedToken: 'new-valid', isAdmin: true, userGroup: 'admin' });
+
     const invalidPackageQueries = [{ Name: 'package1', Version: '~^1.0.0' }];
 
     const response = await request(app)
       .post('/packages')
-      .send(invalidPackageQueries);
+      .send(invalidPackageQueries)
+      .set('X-Authorization', 'valid-token');
 
     expect(response.status).toBe(400);
     expect(response.text).toBe('The \'Version\' cannot be a combination of the different possibilities.');
   });
 
   it('should handle pagination correctly', async () => {
+    vi.mocked(util.verifyToken).mockReturnValueOnce({ updatedToken: 'new-valid', isAdmin: true, userGroup: 'admin' });
+
     const mockPackages = Array(60).fill({ name: 'package', version: '1.0.0', packageId: '123' });
     
     // Mocking db.getAllPackages to return the mock packages
@@ -965,7 +975,8 @@ describe('POST /packages', () => {
     const response = await request(app)
       .post('/packages')
       .send([{ Name: '*' }])
-      .query({ offset: '0' }); // Requesting the second page of results
+      .query({ offset: '0' })
+      .set('X-Authorization', 'valid-token'); // Requesting the second page of results
 
     expect(response.status).toBe(200);
     // console.log(response.body);
@@ -974,26 +985,32 @@ describe('POST /packages', () => {
   });
 
   it('should return 500 when db.getPackagesByNameOrHash fails', async () => {
+    vi.mocked(util.verifyToken).mockReturnValueOnce({ updatedToken: 'new-valid', isAdmin: true, userGroup: 'admin' });
+
     // Simulating database failure
     vi.mocked(db.getPackagesByNameOrHash).mockResolvedValue([false, 'Database error']);
 
     const response = await request(app)
       .post('/packages')
       .send(validPackageQueries)
-      .query({ offset: '0' });
+      .query({ offset: '0' })
+      .set('X-Authorization', 'valid-token');
 
     expect(response.status).toBe(500);
     expect(response.text).toBe('Internal Server Error');
   });
 
   it('should return 500 when db.getAllPackages fails', async () => {
+    vi.mocked(util.verifyToken).mockReturnValueOnce({ updatedToken: 'new-valid', isAdmin: true, userGroup: 'admin' });
+
     // Simulating database failure for fetching all packages
     vi.mocked(db.getAllPackages).mockResolvedValue([false, 'Database error']);
 
     const response = await request(app)
       .post('/packages')
       .send([{ Name: '*' }])
-      .query({ offset: '0' });
+      .query({ offset: '0' })
+      .set('X-Authorization', 'valid-token');
 
     expect(response.status).toBe(500);
     expect(response.text).toBe('Internal Server Error');
