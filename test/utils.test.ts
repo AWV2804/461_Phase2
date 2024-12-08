@@ -88,7 +88,7 @@ describe('utils.ts', () => {
       });
 
       const result = await processNPMUrl('https://registry.npmjs.org/package');
-      expect(result).toBe('https://github.com/owner/repo');
+      expect(result).toBe(['https://github.com/owner/repo', '-1']);
     });
   });
 

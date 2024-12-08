@@ -149,9 +149,11 @@ export async function processNPMUrl(url: string): Promise<[string,  string] | nu
         const versionMatch = npmURL.pathname.match(/\/([^/]+)\/v\/(\d+\.\d+\.\d+)/);
         let version = "-1";
         if (versionMatch) {
-            version = versionMatch[1];
+            version = versionMatch[2];
         }
+        console.log('version:', version);
         const response = await axios.get(npmRegistryUrl);
+        console.log('response', response);
         console.log('response worked, url:' , url);
         const repo = response.data.repository;
         console.log('repo:', repo);

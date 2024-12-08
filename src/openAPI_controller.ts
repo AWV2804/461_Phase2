@@ -639,7 +639,7 @@ app.post('/package', async (req, res) => {
         // Handle the URL for the package
         logger.info('Processing package from URL');
         try {
-            let version;
+            let version = '-1';
             if (URL.includes('npmjs')) {
                 [URL, version] = await util.processNPMUrl(URL);
             }
@@ -871,9 +871,9 @@ app.post('/package/:id', async (req, res) => {
             isUrl = true;
             try {
                 // if the url is npm, change it to github url
-                if (url.includes('npmjs.com')) {
+                if (url.includes('npm')) {
                     console.log('before process url: ', url);
-                    let npmVersion;
+                    let npmVersion = '-1';
                     [url, npmVersion] = await util.processNPMUrl(url);
                     if (npmVersion != '-1') {
                         version = npmVersion;
