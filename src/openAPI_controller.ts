@@ -163,13 +163,6 @@ app.use((req, res, next) => {
  *         description: You do not have the correct permissions to reset the registry.
  *       403:
  *         description: Missing or invalid authentication token, or insufficient permissions.
- *     parameters:
- *       - name: X-Authorization
- *         description: ""
- *         schema:
- *          $ref: '#/components/schemas/AuthenticationToken'
- *      in: header
- *      required: true
  * 
  */
 app.delete('/reset', async (req, res) => {
