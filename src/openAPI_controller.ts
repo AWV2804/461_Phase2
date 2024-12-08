@@ -643,6 +643,8 @@ app.post('/package', async (req, res) => {
             if (URL.includes('npmjs')) {
                 [URL, version] = await util.processNPMUrl(URL);
             }
+            console.log('URL:', URL);
+            console.log('Version:', version);
             logger.debug('Processing URL:', URL);
             const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
             fs.mkdirSync(tempDir, { recursive: true });
@@ -652,12 +654,13 @@ app.post('/package', async (req, res) => {
                 http,
                 dir: tempDir,
                 url: URL,
-                singleBranch: true,
+                singleBranch: false,
                 depth: 1,
             }); 
+
             if (version != '-1') {
                 const refs = await git.listTags({ fs, dir: tempDir });
-
+                console.log('Refs:', refs);
                 const patterns = [
                     version,
                     `v${version}`,
@@ -666,6 +669,7 @@ app.post('/package', async (req, res) => {
                 ];
 
                 const matchedRef = refs.find((ref) => patterns.includes(ref));
+                console.log('Matched Ref:', matchedRef);
                 if (!matchedRef) {
                     logger.error('Error: Version not found');
                     console.debug('Error: Version not found');
