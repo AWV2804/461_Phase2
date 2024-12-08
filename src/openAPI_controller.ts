@@ -168,7 +168,7 @@ app.delete('/reset', async (req, res) => {
         }
         if(isAdmin != true) {
             logger.error('You do not have the correct permissions to reset the registry.');
-            return res.status(403).send('You do not have the correct permissions to reset the registry.');
+            return res.status(401).send('You do not have the correct permissions to reset the registry.');
         }
         logger.info('Token verified');
     } catch (error) {
@@ -791,6 +791,7 @@ app.post('/package', async (req, res) => {
                         } else logger.error('Package removed from mongo');  
                         return res.status(500).send('Error uploading content to S3');
                     }
+                    logger.info(`Github URL package uploaded`);
                     return res.status(201).send(jsonResponse);
                     
                 } else {
