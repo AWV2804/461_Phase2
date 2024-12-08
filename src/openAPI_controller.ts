@@ -807,13 +807,6 @@ app.post('/package/:id', async (req, res) => {
         }
         logger.debug('Update: Body Verified Pt. 1');
 
-        if(!data['URL'] && (data['Content'] && !data['Name']) || (!data['Content'] && data['Name'])) {
-            logger.info('Name or Content was not set.');
-            return res.status(400).send('Name or Content was not set.');
-        }
-        logger.debug('Update: Body Verified Pt. 2');    
-        
-
         // Validate the metadata fields
         if (!metadata['Name'] || !metadata['Version'] || !metadata['ID']) {
             logger.info('Name, Version, or ID was not set.');

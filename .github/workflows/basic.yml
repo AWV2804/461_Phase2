@@ -38,26 +38,6 @@ jobs:
       - name: Install Dependencies
         run: ./run install
             
-      # Step 4: Start the backend server
-      - name: Start Backend Server
-        run: |
-            npm run bstart > bstart.log 2>&1 &
-      # Step 5a: Install wait-on
-      - name: Install wait-on
-        run: npm install -g wait-on
-
-      # Step 5b: Wait for backend to be ready
-      - name: Wait for Backend Server
-        run: |
-            echo "Waiting for backend to start..."
-            wait-on http://localhost:${{env.REACT_APP_BACKEND_PORT}}/api-docs && echo "Backend is up!"
-      
-      # Step 5b: Wait for frontend to be ready
-      - name: Wait for Frontend Server
-        run: |
-          echo "Waiting for frontend to start..."
-          wait-on http://127.0.0.1:${{env.PORT}}/ && echo "Frontend is up!"
-
       # Step 6: Run tests to execute the test suite
       - name: Run Test Suite
         run: ./run test
