@@ -13,6 +13,7 @@ import { useCallback } from 'react';
 import jwt from 'jsonwebtoken';
 import esbuild from 'esbuild';
 import dotenv from 'dotenv';
+import { ConsoleLogEntry } from 'selenium-webdriver/bidi/logEntries.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -141,28 +142,37 @@ export async function processGithubURL(url: string, version: string): Promise<st
     }
 }
 
-/**
- * Processes the given NPM package URL to extract the GitHub repository URL.
- *
- * @param url - The URL of the NPM package to process.
- * @returns A promise that resolves to the GitHub repository URL as a string, or null if no repository field is found or an error occurs.
- *
- * @throws Will log an error message if the request to the URL fails or if the repository field is not found.
- */
-export async function processNPMUrl(url: string): Promise<string | null> {
+export async function processNPMUrl(url: string): Promise<[string,  string] | null> {
     try {
-        const packageName = url.split('/').pop(); // Extract package name from URL
+        const npmURL = new URL(url);
+        const pathSegments = npmURL.pathname.split('/');
+        const packageName = pathSegments.includes('package')
+            ? pathSegments[pathSegments.indexOf('package') + 1]
+            : null;
+        if (!packageName) {
+            console.log('Error: Package name not found in URL');
+            logger.error('Error: Package name not found in URL');
+            return null;
+        }
+        const versionMatch = npmURL.pathname.match(/\/[^/]+\/v\/(\d+\.\d+\.\d+)/);
         const npmRegistryUrl = `https://registry.npmjs.org/${packageName}`;
+        const version = versionMatch ? versionMatch[1] : '-1';
+        console.log('Fetching package content from URL:', npmRegistryUrl);  
+        logger.info('Fetching package content from URL:');
+
         const response = await axios.get(npmRegistryUrl);
-        console.log('response worked, url:' , url);
         const repo = response.data.repository;
         console.log('repo:', repo);
         if (repo && repo.url) {
             // replace the git+ prefix and .git suffix
-            const githubUrl = repo.url.replace(/^git\+/, '').replace(/\.git$/,'');
+        let githubUrl = repo.url.replace(/^git\+/, '').replace(/\.git$/, '');
+        if (githubUrl.startsWith('git://')) {
+            githubUrl = githubUrl.replace('git://', 'https://');
+        }
             logger.info('Properly extracted github url from npm: ', githubUrl);
             console.log('github url:', githubUrl);
-            return githubUrl;
+            console.log('version:', version);
+            return [githubUrl, version];
         }
         console.log('No repository field found in package.json');
         logger.info('No repository field found in package.json');
