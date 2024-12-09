@@ -799,12 +799,12 @@ app.post('/package', async (req, res) => {
         // Handle the URL for the package
         logger.info('Processing package from URL');
         try {
-            let version = '-1';
+            // let version = '-1';
             if (URL.includes('npmjs')) {
-                [URL, version] = await util.processNPMUrl(URL);
+               URL = await util.processNPMUrl(URL);
             }
             console.log('URL:', URL);
-            console.log('Version:', version);
+            // console.log('Version:', version);
             logger.debug('Processing URL:', URL);
             const tempDir = path.join(__dirname, 'tmp', 'repo-' + Date.now());
             fs.mkdirSync(tempDir, { recursive: true });
@@ -814,34 +814,34 @@ app.post('/package', async (req, res) => {
                 http,
                 dir: tempDir,
                 url: URL,
-                singleBranch: false,
+                singleBranch: true,
                 depth: 1,
             }); 
 
-            if (version != '-1') {
-                const refs = await git.listTags({ fs, dir: tempDir });
-                console.log('Refs:', refs);
-                const patterns = [
-                    version,
-                    `v${version}`,
-                    `Version ${version}`,
-                    `version ${version}`,
-                ];
+            // if (version != '-1') {
+            //     const refs = await git.listTags({ fs, dir: tempDir });
+            //     console.log('Refs:', refs);
+            //     const patterns = [
+            //         version,
+            //         `v${version}`,
+            //         `Version ${version}`,
+            //         `version ${version}`,
+            //     ];
 
-                const matchedRef = refs.find((ref) => patterns.includes(ref));
-                console.log('Matched Ref:', matchedRef);
-                if (!matchedRef) {
-                    logger.error('Error: Version not found');
-                    console.debug('Error: Version not found');
-                    return res.status(500);
-                }
+            //     const matchedRef = refs.find((ref) => patterns.includes(ref));
+            //     console.log('Matched Ref:', matchedRef);
+            //     if (!matchedRef) {
+            //         logger.error('Error: Version not found');
+            //         console.debug('Error: Version not found');
+            //         return res.status(500);
+            //     }
 
-                await git.checkout({
-                    fs,
-                    dir: tempDir,
-                    ref: matchedRef,
-                });
-            }
+            //     await git.checkout({
+            //         fs,
+            //         dir: tempDir,
+            //         ref: matchedRef,
+            //     });
+            // }
 
             const packageJsonPath = path.join(tempDir, 'package.json');
             
@@ -1101,11 +1101,11 @@ app.post('/package/:id', async (req, res) => {
                 // if the url is npm, change it to github url
                 if (url.includes('npm')) {
                     console.log('before process url: ', url);
-                    let npmVersion = '-1';
-                    [url, npmVersion] = await util.processNPMUrl(url);
-                    if (npmVersion != '-1') {
-                        version = npmVersion;
-                    }
+                    // let npmVersion = '-1';
+                    url = await util.processNPMUrl(url);
+                    // if (npmVersion != '-1') {
+                    //     version = npmVersion;
+                    // }
                     console.log('after process url: ', url);
                     if (url == null) { // if the github url could not be extracted
                         logger.info('Invalid URL');

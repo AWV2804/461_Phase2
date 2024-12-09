@@ -88,7 +88,7 @@ describe('utils.ts', () => {
       });
 
       const result = await processNPMUrl('https://www.npmjs.com/package/smallest');
-      expect(result).toStrictEqual(['https://github.com/bendrucker/smallest', '-1']);
+      expect(result).toStrictEqual('https://github.com/bendrucker/smallest');
     });
   });
 
