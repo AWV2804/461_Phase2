@@ -138,7 +138,7 @@ const swaggerOptions = {
             ]
         }
     },
-    apis: ['./src/*.ts'],
+    apis: ['./src/*.js'],
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
