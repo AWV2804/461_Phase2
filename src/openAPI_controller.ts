@@ -154,16 +154,23 @@ app.use((req, res, next) => {
  * @swagger
  * /reset:
  *   delete:
- *     summary: Reset the registry
- *     description: Resets the registry if the user has admin permissions.
+ *     operationId: RegistryReset
+ *     summary: Reset the registry. (BASELINE)
+ *     description: Reset the registry to a system default state.
+ *     parameters:
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: ""
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
  *     responses:
- *       200:
- *         description: Registry has been reset.
- *       401:
- *         description: You do not have the correct permissions to reset the registry.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- * 
+ *       "200":
+ *         description: Registry is reset.
+ *       "401":
+ *         description: You do not have permission to reset the registry.
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
  */
 app.delete('/reset', async (req, res) => {
     const body = JSON.stringify(req.body);
@@ -236,19 +243,53 @@ app.delete('/reset', async (req, res) => {
  * @swagger
  * /package/byRegEx:
  *   post:
- *     summary: Find packages by regular expression
- *     description: Finds packages that match the given regular expression.
+ *     operationId: PackageByRegExGet
+ *     summary: Get any packages fitting the regular expression (BASELINE).
+ *     description: Search for a package using regular expression over package names and READMEs. This is similar to search by name.
+ *     parameters:
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: ""
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PackageRegEx'
+ *           examples:
+ *             ExampleRegEx:
+ *               value:
+ *                 RegEx: .*?Underscore.*
  *     responses:
- *       200:
- *         description: Packages found.
- *       400:
- *         description: Malformed request.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       404:
- *          description: No packages found. 
- *       500:
- *         description: Error retrieving packages.
+ *       "200":
+ *         description: Return the total cost of package, and it's dependencies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/PackageMetadata'
+ *             examples:
+ *               ExampleResponse:
+ *                 value:
+ *                   - Version: 1.2.3
+ *                     Name: Underscore
+ *                     ID: underscore
+ *                   - Version: 2.1.0
+ *                     Name: Lodash
+ *                     ID: lodash
+ *                   - Version: 1.2.0
+ *                     Name: React
+ *                     ID: react
+ *       "400":
+ *         description: There is missing field(s) in the PackageRegEx or it is formed improperly, or is invalid
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "404":
+ *         description: No package found under this regex.
  */
 app.post('/package/byRegEx', async (req, res) => {
     const body = JSON.stringify(req.body);
@@ -317,26 +358,57 @@ app.post('/package/byRegEx', async (req, res) => {
  * @swagger
  * /package/{id}/rate:
  *   get:
- *     summary: Rate a package
- *     description: Rates a package based on its ID.
+ *     operationId: PackageRate
+ *     summary: Get ratings for this package. (BASELINE)
+ *     description: |
+ *       Return the rating. Only use this if each metric was computed successfully.
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of package to fetch
  *         schema:
- *           type: string
- *         description: The package ID
+ *           $ref: '#/components/schemas/PackageID'
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: Authentication token in the format "bearer {token}".
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
  *     responses:
- *       200:
- *         description: Package rated successfully.
- *       400:
- *         description: Missing package ID.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       404:
- *         description: Package not found.
- *       500:
- *         description: Error retrieving package.
+ *       "200":
+ *         description: Return the rating. Only use this if each metric was computed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PackageRating'
+ *             examples:
+ *               ExampleResponse:
+ *                 value:
+ *                   BusFactor: 0.8
+ *                   BusFactorLatency: 0.1
+ *                   Correctness: 0.9
+ *                   CorrectnessLatency: 0.05
+ *                   RampUp: 0.7
+ *                   RampUpLatency: 0.2
+ *                   ResponsiveMaintainer: 0.85
+ *                   ResponsiveMaintainerLatency: 0.15
+ *                   LicenseScore: 1.0
+ *                   LicenseScoreLatency: 0.0
+ *                   GoodPinningPractice: 0.75
+ *                   GoodPinningPracticeLatency: 0.25
+ *                   PullRequest: 0.65
+ *                   PullRequestLatency: 0.35
+ *                   NetScore: 0.8
+ *                   NetScoreLatency: 0.2
+ *       "400":
+ *         description: There are missing field(s) in the PackageID or it is formed improperly.
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "404":
+ *         description: Package does not exist.
+ *       "500":
+ *         description: The package rating system encountered an error processing one or more metrics.
  */
 app.get('/package//rate', async (req, res) => {
     const authToken = (req.headers['X-Authorization'] || req.headers['x-authorization']) as string;
@@ -362,31 +434,7 @@ app.get('/package//rate', async (req, res) => {
     return res.status(400).send('Missing package ID');
 });
 
-/**
- * @swagger
- * /package/{id}:
- *   get:
- *     summary: Retrieve package information
- *     description: Retrieves information about a package based on its ID.
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The package ID
- *     responses:
- *       200:
- *         description: Successfully retrieved package content and info.
- *       400:
- *         description: Missing or invalid package ID.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       404:
- *         description: Package not found.
- *       500:
- *         description: Error fetching package.
- */
+
 app.get('/package/:id/rate', async (req, res) => {
     const body = JSON.stringify(req.body);
     console.log(`Rate: ${body}`);
@@ -460,26 +508,71 @@ app.get('/package/:id/rate', async (req, res) => {
  * @swagger
  * /package/{id}:
  *   get:
- *     summary: Retrieve package information
- *     description: Retrieves information about a package based on its ID.
+ *     operationId: PackageRetrieve
+ *     summary: Interact with the package with this ID. (BASELINE)
+ *     description: Return this package.
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of package to fetch
  *         schema:
- *           type: string
- *         description: The package ID
+ *           $ref: '#/components/schemas/PackageID'
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: ""
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
  *     responses:
- *       200:
- *         description: Successfully retrieved package content and info.
- *       400:
- *         description: Missing or invalid package ID.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       404:
- *         description: Package not found.
- *       500:
- *         description: Error fetching package.
+ *       "200":
+ *         description: Return the package. Content is required.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Package'
+ *             examples:
+ *               ExampleResponse:
+ *                 value:
+ *                   metadata:
+ *                     Name: Underscore
+ *                     Version: 1.0.0
+ *                     ID: underscore
+ *                   data:
+ *                     Content: |
+ *                       UEsDBAoAAAAAACAfUFkAAAAAAAAAAAAAAAASAAkAdW5kZXJzY29yZS1t.........fQFQAoADBkODIwZWY3MjkyY2RlYzI4ZGQ4YjVkNTY1OTIxYjgxMDBjYTMzOTc=
+ *                     JSProgram: |
+ *                       if (process.argv.length === 7) {
+ *                       console.log('Success')
+ *                       process.exit(0)
+ *                       } else {
+ *                       console.log('Failed')
+ *                       process.exit(1)
+ *                       }
+ *               ExampleResponseWithURL:
+ *                 value:
+ *                   metadata:
+ *                     Name: Underscore
+ *                     Version: 1.0.0
+ *                     ID: underscore
+ *                   data:
+ *                     Content: |
+ *                       UEsDBAoAAAAAACAfUFkAAAAAAAAAAAAAAAASAAkAdW5kZXJzY29yZS1t.........fQFQAoADBkODIwZWY3MjkyY2RlYzI4ZGQ4YjVkNTY1OTIxYjgxMDBjYTMzOTc=
+ *                     URL: https://github.com/jashkenas/underscore
+ *                     JSProgram: |
+ *                       if (process.argv.length === 7) {
+ *                       console.log('Success')
+ *                       process.exit(0)
+ *                       } else {
+ *                       console.log('Failed')
+ *                       process.exit(1)
+ *                       }
+ *       "400":
+ *         description: There is missing field(s) in the PackageID or it is formed improperly, or is invalid.
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "404":
+ *         description: Package does not exist.
  */
 app.get('/package/:id?', async (req, res) => {
     const body = JSON.stringify(req.body);
@@ -545,46 +638,99 @@ app.get('/package/:id?', async (req, res) => {
  * @swagger
  * /package:
  *   post:
- *     summary: Upload a package and calculate its score
- *     description: Uploads a package either by content or URL, calculates its score, and stores it in the database.
+ *     operationId: PackageCreate
+ *     summary: Upload or Ingest a new package. (BASELINE)
+ *     description: Upload or Ingest a new package. Packages that are uploaded may have the same name but a new version. Refer to the description above to see how an id is formed for a package.
+ *     parameters:
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: ""
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               Name:
- *                 type: string
- *                 description: The name of the package.
- *               Content:
- *                 type: string
- *                 description: The base64-encoded content of the package.
- *               URL:
- *                 type: string
- *                 description: The URL of the package.
- *               debloat:
- *                 type: boolean
- *                 description: Whether to perform tree shaking on the package.
- *               secret:
- *                 type: boolean
- *                 description: Whether the package is secret.
- *               JSProgram:
- *                 type: string
- *                 description: The JavaScript program associated with the package.
+ *             $ref: '#/components/schemas/PackageData'
+ *           examples:
+ *             ExampleRequestWithContent:
+ *               value:
+ *                 Content: |
+ *                   UEsDBAoAAAAAACAfUFkAAAAAAAAAAAAAAAASAAkAdW5kZXJzY29yZS1t.........fQFQAoADBkODIwZWY3MjkyY2RlYzI4ZGQ4YjVkNTY1OTIxYjgxMDBjYTMzOTc=
+ *                 JSProgram: |
+ *                   if (process.argv.length === 7) {
+ *                   console.log('Success')
+ *                   process.exit(0)
+ *                   } else {
+ *                   console.log('Failed')
+ *                   process.exit(1)
+ *                   }
+ *                 debloat: false
+ *                 Name: cool-package
+ *             ExampleRequestWithURL:
+ *               value:
+ *                 JSProgram: |
+ *                   if (process.argv.length === 7) {
+ *                   console.log('Success')
+ *                   process.exit(0)
+ *                   } else {
+ *                   console.log('Failed')
+ *                   process.exit(1)
+ *                   }
+ *                 URL: https://github.com/jashkenas/underscore
  *     responses:
- *       201:
- *         description: Package uploaded successfully.
- *       400:
- *         description: Invalid request data.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       409:
- *         description: Package already exists.
- *       424:
- *         description: Package rating too low.
- *       500:
- *         description: Error uploading package.
+ *       "201":
+ *         description: Success. Check the ID in the returned metadata for the official ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Package'
+ *             examples:
+ *               ExampleResponseWithURL:
+ *                 value:
+ *                   metadata:
+ *                     Name: Underscore
+ *                     Version: 1.0.0
+ *                     ID: underscore
+ *                   data:
+ *                     Content: |
+ *                       UEsDBAoAAAAAACAfUFkAAAAAAAAAAAAAAAASAAkAdW5kZXJzY29yZS1t.........fQFQAoADBkODIwZWY3MjkyY2RlYzI4ZGQ4YjVkNTY1OTIxYjgxMDBjYTMzOTc=
+ *                     URL: https://github.com/jashkenas/underscore
+ *                     JSProgram: |
+ *                       if (process.argv.length === 7) {
+ *                       console.log('Success')
+ *                       process.exit(0)
+ *                       } else {
+ *                       console.log('Failed')
+ *                       process.exit(1)
+ *                       }
+ *               ExampleResponseWithContent:
+ *                 value:
+ *                   metadata:
+ *                     Name: Underscore
+ *                     Version: 1.0.0
+ *                     ID: underscore
+ *                   data:
+ *                     Content: |
+ *                       UEsDBAoAAAAAACAfUFkAAAAAAAAAAAAAAAASAAkAdW5kZXJzY29yZS1t.........fQFQAoADBkODIwZWY3MjkyY2RlYzI4ZGQ4YjVkNTY1OTIxYjgxMDBjYTMzOTc=
+ *                     JSProgram: |
+ *                       if (process.argv.length === 7) {
+ *                       console.log('Success')
+ *                       process.exit(0)
+ *                       } else {
+ *                       console.log('Failed')
+ *                       process.exit(1)
+ *                       }
+ *       "400":
+ *         description: There is missing field(s) in the PackageData or it is formed improperly (e.g. Content and URL ar both set)
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "409":
+ *         description: Package exists already.
+ *       "424":
+ *         description: Package is not uploaded due to the disqualified rating.
  */
 app.post('/package', async (req, res) => {
     const body = JSON.stringify(req.body);
@@ -973,62 +1119,39 @@ app.post('/package', async (req, res) => {
  * @swagger
  * /package/{id}:
  *   post:
- *     summary: Update a package
- *     description: Updates an existing package with new content or URL.
+ *     operationId: PackageUpdate
+ *     summary: Update a package. (BASELINE)
+ *     description: Update an existing package with new content or URL.
+ *       This endpoint is used to create a new version for an existing package.
+ *       You will receive the package contents similarly to the /package endpoint, along with a new version ID. First, check if the new version ID is more recent than the latest version. Note that the provided package ID may refer to an older version of the package; in this case, you should append the new package version after the latest version.
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: Package ID
  *         schema:
- *           type: string
- *         description: The package ID
+ *           $ref: '#/components/schemas/PackageID'
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: ""
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               metadata:
- *                 type: object
- *                 properties:
- *                   Name:
- *                     type: string
- *                     description: The name of the package.
- *                   Version:
- *                     type: string
- *                     description: The version of the package.
- *                   ID:
- *                     type: string
- *                     description: The package ID.
- *               data:
- *                 type: object
- *                 properties:
- *                   Content:
- *                     type: string
- *                     description: The base64-encoded content of the package.
- *                   URL:
- *                     type: string
- *                     description: The URL of the package.
- *                   debloat:
- *                     type: boolean
- *                     description: Whether to perform tree shaking on the package.
- *                   secret:
- *                     type: boolean
- *                     description: Whether the package is secret.
+ *             $ref: '#/components/schemas/Package'
  *     responses:
- *       200:
- *         description: Package updated successfully.
- *       400:
- *         description: Invalid request data.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       404:
- *         description: Package not found.
- *       409:
- *         description: Version already exists.
- *       500:
- *         description: Error updating package.
+ *       "200":
+ *         description: Version is updated.
+ *       "400":
+ *         description: There is missing field(s) in the PackageID or it is formed improperly, or is invalid.
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "404":
+ *         description: Package does not exist.
  */
 app.post('/package/:id', async (req, res) => { 
     const body = JSON.stringify(req.body);
@@ -1378,39 +1501,47 @@ app.post('/package/:id', async (req, res) => {
  * @swagger
  * /authenticate:
  *   put:
- *     summary: Authenticate a user
- *     description: Authenticates a user and returns a bearer token.
+ *     operationId: CreateAuthToken
+ *     summary: Create an access token. (NON-BASELINE)
+ *     description: |
+ *       Create an access token.
+ *       
+ *       If your system supports the authentication scheme described in the spec, then:
+ *       
+ *       1. The obtained token should be provided to the other endpoints via the "X-Authorization" header.
+ *       2. The "Authorization" header is *required* in your system.
+ *       
+ *       Otherwise, this endpoint should return HTTP 501 "Not implemented", and the "X-Authorization" header should be unused for the other endpoints.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               User:
- *                 type: object
- *                 properties:
- *                   name:
- *                     type: string
- *                     description: The username.
- *                   isAdmin:
- *                     type: boolean
- *                     description: Whether the user is an admin.
- *               Secret:
- *                 type: object
- *                 properties:
- *                   password:
- *                     type: string
- *                     description: The user's password.
+ *             $ref: '#/components/schemas/AuthenticationRequest'
+ *           examples:
+ *             ExampleRequest:
+ *               value:
+ *                 User:
+ *                   name: ece30861defaultadminuser
+ *                   isAdmin: true
+ *                 Secret:
+ *                   password: correcthorsebatterystaple123(!__+@**(A'"`;DROP TABLE packages;
  *     responses:
- *       200:
- *         description: User authenticated successfully.
- *       400:
- *         description: Malformed AuthenticationRequest.
- *       401:
- *         description: Invalid username or password.
- *       500:
- *         description: Bad Request.
+ *       "200":
+ *         description: Return an AuthenticationToken.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthenticationToken'
+ *             examples:
+ *               ExampleResponse:
+ *                 value: '"bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."'
+ *       "400":
+ *         description: There are missing field(s) in the AuthenticationRequest or it is formed improperly.
+ *       "401":
+ *         description: The username or password is invalid.
+ *       "501":
+ *         description: This system does not support authentication.
  */
 app.put('/authenticate', async (req, res) => {
     const body = JSON.stringify(req.body);
@@ -1460,6 +1591,68 @@ app.put('/authenticate', async (req, res) => {
       }
 });
 
+/**
+ * @swagger
+ * /package/{id}/cost:
+ *   get:
+ *     operationId: PackageCostGet
+ *     summary: Get the cost of a package (BASELINE)
+ *     description: Get the cost of a package based on its ID, optionally including dependencies. The 'dependency' query parameter controls whether to include the cost of dependencies.
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID of package to fetch
+ *         schema:
+ *           $ref: '#/components/schemas/PackageID'
+ *       - name: dependency
+ *         in: query
+ *         description: Whether to include dependencies in the cost calculation.
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *       - name: X-Authorization
+ *         in: header
+ *         required: true
+ *         description: ""
+ *         schema:
+ *           $ref: '#/components/schemas/AuthenticationToken'
+ *     responses:
+ *       "200":
+ *         description: Return the total cost of package, and it's dependencies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PackageCost'
+ *             examples:
+ *               ExampleWithoutDependency:
+ *                 value: |
+ *                   {
+ *                     "357898765": {
+ *                       "totalCost": 50.0
+ *                     }
+ *                   }
+ *               ExampleWithDependency:
+ *                 value: |
+ *                   {
+ *                     "357898765": {
+ *                       "standaloneCost": 50.0,
+ *                       "totalCost": 95.0
+ *                     },
+ *                     "988645763": {
+ *                       "standaloneCost": 20.0,
+ *                       "totalCost": 45.0
+ *                     }
+ *                   }
+ *       "400":
+ *         description: There is missing field(s) in the PackageID
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "404":
+ *         description: Package does not exist.
+ *       "500":
+ *         description: The package rating system choked on at least one of the metrics.
+ */
 app.get('/package//cost', async (req, res) => {
     // Extract Authentication Token
     const authToken = (req.headers['x-authorization'] || req.headers['X-Authorization']) as string;
@@ -1490,36 +1683,6 @@ app.get('/package//cost', async (req, res) => {
     return res.status(400).send('Missing or invalid Package ID');
 });
 
-/**
- * @swagger
- * /package/{id}/cost:
- *   get:
- *     summary: Get the cost of a package
- *     description: Retrieves the cost of a package based on its ID.
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The package ID
- *       - in: query
- *         name: dependency
- *         schema:
- *           type: boolean
- *         description: Whether to include dependencies in the cost calculation.
- *     responses:
- *       200:
- *         description: Successfully retrieved package cost.
- *       400:
- *         description: Missing or invalid Package ID.
- *       403:
- *         description: Missing or invalid authentication token, or insufficient permissions.
- *       404:
- *         description: Package not found.
- *       500:
- *         description: Server error while retrieving package cost.
- */
 app.get('/package/:id/cost', async (req, res) => {
     // Extract Authentication Token
     const body = JSON.stringify(req.body);
@@ -1658,20 +1821,25 @@ app.get('/package/:id/cost', async (req, res) => {
  * @swagger
  * /packages:
  *   post:
- *     summary: Search for packages
- *     description: Searches for packages based on the provided queries.
+ *     operationId: PackagesList
+ *     summary: Get the packages from the registry. (BASELINE)
+ *     description: Get any packages fitting the query. Search for packages satisfying the indicated query.
+ *       If you want to enumerate all packages, provide an array with a single PackageQuery whose name is "*".
+ *       The response is paginated; the response header includes the offset to use in the next query.
+ *       In the Request Body below, "Version" has all the possible inputs. The "Version" cannot be a combination of the different possibilities.
  *     parameters:
- *       - in: header
- *         name: x-authorization
+ *       - name: offset
+ *         in: query
+ *         description: Provide this for pagination. If not provided, returns the first page of results.
+ *         schema:
+ *           $ref: '#/components/schemas/EnumerateOffset'
+ *         required: false
+ *       - name: X-Authorization
+ *         in: header
  *         required: true
+ *         description: ""
  *         schema:
- *           type: string
- *         description: The authentication token.
- *       - in: query
- *         name: offset
- *         schema:
- *           type: string
- *         description: The offset for pagination.
+ *           $ref: '#/components/schemas/AuthenticationToken'
  *     requestBody:
  *       required: true
  *       content:
@@ -1679,41 +1847,46 @@ app.get('/package/:id/cost', async (req, res) => {
  *           schema:
  *             type: array
  *             items:
- *               type: object
- *               properties:
- *                 Name:
- *                   type: string
- *                   description: The name of the package.
- *                 Version:
- *                   type: string
- *                   description: The version of the package.
+ *               $ref: '#/components/schemas/PackageQuery'
+ *           examples:
+ *             ExampleRequest:
+ *               value:
+ *                 - Name: "Alpha"
+ *                   Version: "^1.2.3"
  *     responses:
- *       200:
- *         description: Packages found.
+ *       "200":
+ *         description: List of packages
+ *         headers:
+ *           offset:
+ *             schema:
+ *               $ref: '#/components/schemas/EnumerateOffset'
+ *             examples:
+ *               ExampleRequest:
+ *                 value: "3"
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   Name:
- *                     type: string
- *                     description: The name of the package.
- *                   Version:
- *                     type: string
- *                     description: The version of the package.
- *                   ID:
- *                     type: string
- *                     description: The package ID.
- *       400:
- *         description: Invalid request body.
- *       403:
- *         description: Missing or invalid authentication token.
- *       413:
+ *                 $ref: '#/components/schemas/PackageMetadata'
+ *             examples:
+ *               ExampleResponse:
+ *                 value:
+ *                   - Version: 1.2.3
+ *                     Name: Underscore
+ *                     ID: underscore
+ *                   - Version: 1.2.3
+ *                     Name: Lodash
+ *                     ID: lodash
+ *                   - Version: 1.2.3
+ *                     Name: React
+ *                     ID: react
+ *       "400":
+ *         description: There are missing field(s) in the PackageQuery or it is formed improperly, or is invalid.
+ *       "403":
+ *         description: Authentication failed due to invalid or missing AuthenticationToken.
+ *       "413":
  *         description: Too many packages returned.
- *       500:
- *         description: Internal Server Error.
  */
 app.post('/packages', async (req, res) => {
     console.log("HI I AM HERE");
@@ -1845,11 +2018,29 @@ app.post('/packages', async (req, res) => {
  * @swagger
  * /tracks:
  *   get:
- *     summary: Get implemented track
- *     description: Retrieves the implemented track.
+ *     operationId: GetPlannedTracks
+ *     summary: Get the list of tracks a student has planned to implement in their code
+ *     description: Return the list of tracks the student plans to implement
  *     responses:
- *       200:
- *         description: Successfully retrieved track.
+ *       "200":
+ *         description: Return the list of tracks the student plans to implement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plannedTracks:
+ *                   type: array
+ *                   description: "List of tracks the student plans to implement"
+ *                   items:
+ *                     type: string
+ *                     enum:
+ *                       - "Performance track"
+ *                       - "Access control track"
+ *                       - "High assurance track"
+ *                       - "ML inside track"
+ *       "500":
+ *         description: The system encountered an error while retrieving the student's track information.
  */
 app.get('/tracks', async (req, res) => {
     const plannedTracks = ["Access control track"]; // Replace with actual logic to retrieve planned tracks
@@ -1884,11 +2075,11 @@ app.get('/tracks', async (req, res) => {
  *                 type: string
  *                 description: The user group.
  *     responses:
- *       200:
+ *       "200":
  *         description: User created successfully.
- *       400:
+ *       "400":
  *         description: Invalid request data.
- *       500:
+ *       "500":
  *         description: Server error.
  */
 app.post('/create-account', async (req, res) => {
@@ -1940,13 +2131,13 @@ app.post('/create-account', async (req, res) => {
  *                 type: boolean
  *                 description: Whether the requester is an admin.
  *     responses:
- *       200:
+ *       "200":
  *         description: User deleted successfully.
- *       400:
+ *       "400":
  *         description: Invalid request data.
- *       403:
+ *       "403":
  *         description: Invalid permissions - Not Admin.
- *       500:
+ *       "500":
  *         description: Server error.
  */
 app.delete('/delete-account', async (req, res) => {
